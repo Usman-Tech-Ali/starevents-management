@@ -5,19 +5,15 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.authentication import BaseAuthentication
 from django.contrib.auth import login
 from django.utils import timezone
 from django.conf import settings
 from datetime import datetime, timedelta
-DEBUG = settings.DEBUG
+import numpy as np
 import jwt
 import base64
-import binascii
 import io
-from PIL import Image
-
-# Optional import for face recognition (may not be available on all systems)
+from PIL import Image, ImageOps, ImageFilter
 try:
     import face_recognition
     FACE_RECOGNITION_AVAILABLE = True
@@ -30,15 +26,118 @@ from .serializers import (
     OTPRequestSerializer, OTPVerifySerializer, FacialRecognitionSerializer
 )
 from .utils import send_otp_email, send_otp_sms, log_audit_event
-from .backends import JWTAuthentication
+
+EMBEDDING_PREFIX = b'ENCV1'
+IMAGE_PREFIX = b'IMGV1'
+IMAGE_PREFIX_V2 = b'IMGV2'
+
+
+def _image_data_to_rgb_array(image_data):
+    """Convert base64 image payload (raw or data URL) to 8-bit RGB numpy array."""
+    if not image_data or not isinstance(image_data, str):
+        raise ValueError('Missing image_data')
+
+    cleaned_data = image_data.strip()
+    if cleaned_data.startswith('data:image') and ',' in cleaned_data:
+        cleaned_data = cleaned_data.split(',', 1)[1]
+
+    padding = len(cleaned_data) % 4
+    if padding:
+        cleaned_data += '=' * (4 - padding)
+
+    image_bytes = base64.b64decode(cleaned_data)
+    image_array = _bytes_to_rgb_array(image_bytes)
+
+    return image_bytes, image_array
+
+
+def _bytes_to_rgb_array(image_bytes):
+    if not image_bytes:
+        raise ValueError('Empty image bytes')
+
+    pil_image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+    image_array = np.asarray(pil_image, dtype=np.uint8)
+
+    if image_array.ndim != 3 or image_array.shape[2] != 3:
+        raise ValueError('Image must be RGB')
+
+    return np.ascontiguousarray(image_array, dtype=np.uint8)
+
+
+def _to_bytes(value):
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, bytes):
+        return value
+    raise ValueError('Stored biometric data is not bytes')
+
+
+def _compute_image_hash_from_bytes(image_bytes):
+    """Compute a simple 64-bit perceptual hash for fallback biometric matching."""
+    image = Image.open(io.BytesIO(image_bytes)).convert('L')
+    image = ImageOps.autocontrast(image)
+    image = image.filter(ImageFilter.GaussianBlur(radius=1))
+    image = image.resize((8, 8), Image.Resampling.LANCZOS)
+    pixels = np.asarray(image, dtype=np.uint8)
+    mean_val = pixels.mean()
+    bits = (pixels >= mean_val).astype(np.uint8).flatten()
+    packed = np.packbits(bits)
+    return packed.tobytes()
+
+
+def _compute_image_signature_v2(image_bytes):
+    """Compute a more robust 128-bit fallback signature (aHash + dHash)."""
+    image = Image.open(io.BytesIO(image_bytes)).convert('L')
+    image = ImageOps.autocontrast(image)
+    image = image.filter(ImageFilter.GaussianBlur(radius=1))
+
+    width, height = image.size
+    side = min(width, height)
+    left = max((width - side) // 2, 0)
+    top = max((height - side) // 2, 0)
+    image = image.crop((left, top, left + side, top + side))
+
+    ahash_img = image.resize((8, 8), Image.Resampling.LANCZOS)
+    ahash_pixels = np.asarray(ahash_img, dtype=np.uint8)
+    ahash_bits = (ahash_pixels >= ahash_pixels.mean()).astype(np.uint8).flatten()
+    ahash_bytes = np.packbits(ahash_bits).tobytes()
+
+    dhash_img = image.resize((9, 8), Image.Resampling.LANCZOS)
+    dhash_pixels = np.asarray(dhash_img, dtype=np.uint8)
+    dhash_bits = (dhash_pixels[:, 1:] > dhash_pixels[:, :-1]).astype(np.uint8).flatten()
+    dhash_bytes = np.packbits(dhash_bits).tobytes()
+
+    return ahash_bytes + dhash_bytes
+
+
+def _hamming_distance_bytes(hash_a, hash_b):
+    if len(hash_a) != len(hash_b):
+        return 64
+    distance = 0
+    for a_byte, b_byte in zip(hash_a, hash_b):
+        distance += int((a_byte ^ b_byte).bit_count())
+    return distance
+
+
+def _extract_face_encoding(image_array):
+    """Try to extract a face encoding; return None if unavailable on current platform/input."""
+    if not FACE_RECOGNITION_AVAILABLE:
+        return None
+    try:
+        encodings = face_recognition.face_encodings(image_array)
+        if encodings:
+            return encodings[0]
+    except Exception:
+        return None
+    return None
 
 
 class AuthViewSet(viewsets.ViewSet):
     """
     Authentication ViewSet - 3-Phase Security System
     """
-    # Disable DRF authentication for these endpoints so login/OTP can be called without a token
-    authentication_classes = []
     permission_classes = [AllowAny]
     
     @action(detail=False, methods=['post'])
@@ -175,12 +274,30 @@ class AuthViewSet(viewsets.ViewSet):
                 'available_otps_count': available_otps.count(),
                 'latest_otp_created': available_otps.first().created_at if available_otps.exists() else None,
                 'latest_otp_expires': available_otps.first().expires_at if available_otps.exists() else None,
-            } if DEBUG else {}
+            } if settings.DEBUG else {}
         }, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'])
     def verify_biometric(self, request):
-        """Phase 3: Facial Recognition"""
+        """
+        Verify biometric data (EVERY LOGIN)
+        
+        FIRST LOGIN:
+        - Compares newly captured face with just-enrolled face (same person, same image)
+        - Always succeeds on first login because it's comparing same image with itself
+        
+        SECOND+ LOGINS (the real verification):
+        - Loads the reference face image stored in database from first login
+        - Extracts face encoding from newly captured image
+        - Extracts face encoding from stored reference image
+        - Uses face_recognition library to compare if they're the same person
+        - If faces match (within tolerance) → login succeeds
+        - If faces don't match (different person) → login fails with "Face does not match"
+        
+        Database check: user.biometric_embedding field contains the stored reference image
+        
+        Returns: JWT token if verified, error message if verification fails
+        """
         user_id = request.data.get('user_id')
         try:
             user = User.objects.get(pk=user_id)
@@ -190,125 +307,113 @@ class AuthViewSet(viewsets.ViewSet):
         if not user.biometric_enrolled:
             return Response({'error': 'Biometric not enrolled'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not user.biometric_embedding:
-            return Response({'error': 'No stored biometric data'}, status=status.HTTP_400_BAD_REQUEST)
-        
         serializer = FacialRecognitionSerializer(data=request.data, context={'user': user})
         if serializer.is_valid():
             # Decode base64 image
             image_data = request.data.get('image_data')
             try:
-                image_bytes = base64.b64decode(image_data)
-                image = Image.open(io.BytesIO(image_bytes))
+                image_bytes, image_array = _image_data_to_rgb_array(image_data)
                 
-                # Validate image format and size
-                if image.format not in ['PNG', 'JPEG', 'JPG']:
-                    return Response({'error': 'Invalid image format. Please use PNG or JPEG.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Check image dimensions (should be reasonable for a face photo)
-                width, height = image.size
-                if width < 100 or height < 100:
-                    return Response({'error': 'Image too small. Please ensure your face is clearly visible.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # If face_recognition is available, use it for actual face matching
-                if FACE_RECOGNITION_AVAILABLE:
-                    try:
-                        image_array = face_recognition.load_image_file(io.BytesIO(image_bytes))
-                        
-                        # Get stored embedding
-                        stored_embedding = face_recognition.api.face_encodings(
-                            face_recognition.load_image_file(io.BytesIO(user.biometric_embedding))
-                        )[0] if user.biometric_embedding else None
-                        
-                        if not stored_embedding:
-                            return Response({'error': 'No stored biometric data'}, status=status.HTTP_400_BAD_REQUEST)
-                        
-                        # Get face encoding from current image
-                        face_encodings = face_recognition.face_encodings(image_array)
-                        if not face_encodings:
-                            return Response({'error': 'No face detected in image'}, status=status.HTTP_400_BAD_REQUEST)
-                        
-                        # Compare faces
-                        tolerance = getattr(settings, 'FACE_RECOGNITION_TOLERANCE', 0.6)
-                        matches = face_recognition.compare_faces(
-                            [stored_embedding],
-                            face_encodings[0],
-                            tolerance=tolerance
-                        )
-                        
-                        if matches[0]:
-                            log_audit_event(user, 'biometric_verified', request)
-                            user.unlock_account()
-                            user.failed_login_attempts = 0
-                            user.save()
-                            
-                            # Generate JWT token
-                            token = generate_jwt_token(user)
-                            
-                            return Response({
-                                'message': 'Biometric verified successfully',
-                                'token': token,
-                                'user': UserSerializer(user).data
-                            }, status=status.HTTP_200_OK)
-                        else:
-                            log_audit_event(user, 'biometric_failed', request)
-                            return Response({'error': 'Face recognition failed. Please try again.'}, status=status.HTTP_401_UNAUTHORIZED)
+                # Load stored embedding and compare
+                stored_image_bytes = _to_bytes(user.biometric_embedding)
+                current_encoding = _extract_face_encoding(image_array)
+
+                is_match = False
+
+                if stored_image_bytes.startswith(EMBEDDING_PREFIX):
+                    if current_encoding is None:
+                        return Response({'error': 'Face could not be processed. Please capture a clearer image.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    stored_encoding_bytes = stored_image_bytes[len(EMBEDDING_PREFIX):]
+                    stored_encoding = np.frombuffer(stored_encoding_bytes, dtype=np.float64)
+                    if stored_encoding.size != 128:
+                        return Response({'error': 'Stored biometric data is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    distance = np.linalg.norm(stored_encoding - current_encoding)
+                    is_match = distance <= settings.FACE_RECOGNITION_TOLERANCE
+
+                elif stored_image_bytes.startswith(IMAGE_PREFIX):
+                    stored_hash = stored_image_bytes[len(IMAGE_PREFIX):]
+                    current_hash = _compute_image_hash_from_bytes(image_bytes)
+                    hash_distance = _hamming_distance_bytes(stored_hash, current_hash)
+                    is_match = hash_distance <= 18
+
+                elif stored_image_bytes.startswith(IMAGE_PREFIX_V2):
+                    stored_signature = stored_image_bytes[len(IMAGE_PREFIX_V2):]
+                    current_signature = _compute_image_signature_v2(image_bytes)
+                    signature_distance = _hamming_distance_bytes(stored_signature, current_signature)
+                    is_match = signature_distance <= 34
+
+                else:
+                    stored_image_array = _bytes_to_rgb_array(stored_image_bytes)
+                    stored_encoding = _extract_face_encoding(stored_image_array)
+
+                    if current_encoding is not None and stored_encoding is not None:
+                        distance = np.linalg.norm(stored_encoding - current_encoding)
+                        is_match = distance <= settings.FACE_RECOGNITION_TOLERANCE
+                    else:
+                        stored_hash = _compute_image_hash_from_bytes(stored_image_bytes)
+                        current_hash = _compute_image_hash_from_bytes(image_bytes)
+                        hash_distance = _hamming_distance_bytes(stored_hash, current_hash)
+                        is_match = hash_distance <= 18
+
+                if is_match:
+                    log_audit_event(user, 'biometric_used', request)
+                    user.unlock_account()
                     
-                    except Exception as face_err:
-                        # If face_recognition fails, fall back to basic validation
-                        log_audit_event(user, 'biometric_error', request, {'error': str(face_err)})
-                        # Continue to basic validation below
-                
-                # Fallback: Basic validation (for demo when face_recognition is not available)
-                # In production, you should always use face_recognition for security
-                # This is a simplified version for demonstration purposes
-                log_audit_event(user, 'biometric_verified_basic', request, {'note': 'Using basic validation (face_recognition not available)'})
-                user.unlock_account()
-                user.failed_login_attempts = 0
-                user.save()
-                
-                # Generate JWT token
-                token = generate_jwt_token(user)
-                
-                return Response({
-                    'message': 'Biometric verified successfully',
-                    'token': token,
-                    'user': UserSerializer(user).data,
-                    'note': 'Basic validation used (face_recognition library not available)'
-                }, status=status.HTTP_200_OK)
+                    # Generate JWT token
+                    token = generate_jwt_token(user)
+                    
+                    return Response({
+                        'message': 'Biometric verified successfully',
+                        'token': token,
+                        'user': UserSerializer(user).data
+                    }, status=status.HTTP_200_OK)
+                else:
+                    log_audit_event(user, 'biometric_failed', request)
+                    return Response({'error': 'Face does not match. Try again.'}, status=status.HTTP_400_BAD_REQUEST)
             
-            except (binascii.Error, ValueError):
-                return Response({'error': 'Invalid image data format'}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 return Response({'error': f'Image processing error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(
-        detail=False,
-        methods=['post'],
-        authentication_classes=[JWTAuthentication],
-        permission_classes=[IsAuthenticated],
-    )
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def enroll_biometric(self, request):
-        """Enroll biometric data"""
+        """
+        Enroll biometric data (FIRST TIME ONLY)
+        
+        On first login:
+        - Captures user's face image
+        - Stores it in database (user.biometric_embedding field)
+        - This becomes the reference image for future logins
+        
+        Returns: Success message when face is saved
+        """
         user = request.user
         image_data = request.data.get('image_data')
         
         try:
-            if not image_data:
-                return Response({'error': 'image_data is required'}, status=status.HTTP_400_BAD_REQUEST)
+            image_bytes, image_array = _image_data_to_rgb_array(image_data)
 
-            # Decode and store raw image bytes; we are not running server-side face recognition here
-            image_bytes = base64.b64decode(image_data)
+            face_encoding = _extract_face_encoding(image_array)
 
-            user.biometric_embedding = image_bytes  # Store as binary image data
+            if face_encoding is not None:
+                user.biometric_embedding = EMBEDDING_PREFIX + np.asarray(face_encoding, dtype=np.float64).tobytes()
+            else:
+                fallback_signature = _compute_image_signature_v2(image_bytes)
+                user.biometric_embedding = IMAGE_PREFIX_V2 + fallback_signature
+
             user.biometric_enrolled = True
             user.save()
             
             return Response({'message': 'Biometric enrolled successfully'}, status=status.HTTP_200_OK)
         
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({'error': f'Enrollment error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 

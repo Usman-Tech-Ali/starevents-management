@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -6,6 +6,7 @@ import api from '../api/axios'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Loading from '../components/ui/Loading'
+import Webcam from 'react-webcam'
 import { Lock, Mail, Smartphone, Shield } from 'lucide-react'
 
 const Login = () => {
@@ -15,11 +16,11 @@ const Login = () => {
   const [phase, setPhase] = useState(1) // 1: password, 2: OTP, 3: biometric
   const [userId, setUserId] = useState(null)
   const [deliveryMethod, setDeliveryMethod] = useState('email')
-  const [loading, setLoading] = useState(false)
+  const [capturedImage, setCapturedImage] = useState(null)
+  const [otpAuthData, setOtpAuthData] = useState(null)
   const [biometricLoading, setBiometricLoading] = useState(false)
-  const [cameraActive, setCameraActive] = useState(false)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
+  const [loading, setLoading] = useState(false)
+  const webcamRef = useRef(null)
   
   const { login } = useAuth()
   const { showToast } = useToast()
@@ -51,98 +52,6 @@ const Login = () => {
     }
   }
 
-  const stopCamera = () => {
-    const video = videoRef.current
-    if (video && video.srcObject) {
-      const tracks = video.srcObject.getTracks()
-      tracks.forEach((track) => track.stop())
-      video.srcObject = null
-    }
-    setCameraActive(false)
-  }
-
-  const startCamera = async () => {
-    if (cameraActive) return
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        setCameraActive(true)
-      }
-    } catch (err) {
-      console.error('Camera error:', err)
-      showToast('Unable to access camera. Please check permissions.', 'error')
-    }
-  }
-
-  const handleBiometricVerify = async () => {
-    if (!userId) {
-      showToast('User ID is missing for biometric verification.', 'error')
-      return
-    }
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-
-    if (!video || !canvas) {
-      showToast('Camera not ready. Please start camera first.', 'error')
-      return
-    }
-
-    try {
-      setBiometricLoading(true)
-
-      const width = video.videoWidth
-      const height = video.videoHeight
-
-      if (!width || !height) {
-        showToast('Camera not ready. Please wait a moment and try again.', 'error')
-        setBiometricLoading(false)
-        return
-      }
-
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0, width, height)
-
-      const dataUrl = canvas.toDataURL('image/png')
-      const base64Image = dataUrl.split(',')[1]
-
-      const response = await api.post('/auth/verify_biometric/', {
-        user_id: userId,
-        image_data: base64Image,
-      })
-
-      login(response.data.user, response.data.token)
-      showToast('Biometric login successful!', 'success')
-      stopCamera()
-      navigate('/dashboard')
-    } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        'Biometric verification failed.'
-      showToast(message, 'error')
-      console.error('Biometric verify error:', err.response?.data || err)
-    } finally {
-      setBiometricLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    // Stop camera when leaving biometric phase or unmounting
-    if (phase !== 3) {
-      stopCamera()
-    }
-
-    return () => {
-      stopCamera()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
-
   const requestOTP = async (userIdParam = null) => {
     try {
       const userIdToUse = userIdParam || userId
@@ -169,14 +78,73 @@ const Login = () => {
         user_id: userId,
         otp: otp
       })
-      
-      login(response.data.user, response.data.token)
-      showToast('Login successful!', 'success')
-      navigate('/dashboard')
+
+      setOtpAuthData({
+        user: response.data.user,
+        token: response.data.token
+      })
+      setCapturedImage(null)
+      setPhase(3)
+      showToast('OTP verified. Continue with face detection.', 'success')
     } catch (err) {
       showToast(err.response?.data?.error || 'Invalid OTP', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const captureImage = () => {
+    const imageSrc = webcamRef.current?.getScreenshot()
+    if (!imageSrc) {
+      showToast('Unable to capture image. Please allow camera access.', 'error')
+      return
+    }
+    setCapturedImage(imageSrc)
+  }
+
+  const getImagePayload = (imageData) => {
+    if (!imageData) return ''
+    return imageData.includes(',') ? imageData.split(',')[1] : imageData
+  }
+
+  const completeBiometricAuth = async () => {
+    if (!capturedImage) {
+      showToast('Please capture your face first.', 'warning')
+      return
+    }
+
+    setBiometricLoading(true)
+    try {
+      const imagePayload = getImagePayload(capturedImage)
+
+      // Only enroll if explicitly marked not enrolled by backend
+      if (otpAuthData?.user?.biometric_enrolled === false) {
+        showToast('Enrolling your face for first time...', 'info')
+        await api.post(
+          '/auth/enroll_biometric/',
+          { image_data: imagePayload },
+          {
+            headers: {
+              Authorization: `Bearer ${otpAuthData.token}`
+            }
+          }
+        )
+        showToast('Face enrolled successfully!', 'success')
+      }
+
+      // Verify the face (on first login compares with just-enrolled image, on subsequent logins compares with stored enrollment)
+      const verifyResponse = await api.post('/auth/verify_biometric/', {
+        user_id: userId,
+        image_data: imagePayload
+      })
+
+      login(verifyResponse.data.user, verifyResponse.data.token)
+      showToast('Face verified. Login successful!', 'success')
+      navigate('/dashboard')
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Face verification failed', 'error')
+    } finally {
+      setBiometricLoading(false)
     }
   }
 
@@ -348,61 +316,75 @@ const Login = () => {
 
           {phase === 3 && (
             <div className="space-y-6">
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                ⚠️ Too many failed login attempts. Biometric authentication is required for security.
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  Complete face detection to finish login.
+                </p>
               </div>
-              <div className="space-y-4">
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-48 h-36 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-                    <video
-                      ref={videoRef}
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      playsInline
-                    />
-                  </div>
-                  <canvas ref={canvasRef} className="hidden" />
-                  <p className="text-xs text-gray-500">
-                    Position your face clearly in front of the camera, then click &quot;Verify Face&quot;.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    onClick={startCamera}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    {cameraActive ? 'Restart Camera' : 'Start Camera'}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleBiometricVerify}
-                    className="w-full"
-                    disabled={biometricLoading || !cameraActive}
-                  >
-                    {biometricLoading ? (
-                      <span className="flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Verifying face...
-                      </span>
-                    ) : (
-                      'Verify Face'
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      stopCamera()
-                      setPhase(1)
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                {capturedImage ? (
+                  <img
+                    src={capturedImage}
+                    alt="Captured face"
+                    className="w-full rounded-lg"
+                  />
+                ) : (
+                  <Webcam
+                    ref={webcamRef}
+                    audio={false}
+                    screenshotFormat="image/jpeg"
+                    className="w-full rounded-lg"
+                    videoConstraints={{
+                      width: 720,
+                      height: 480,
+                      facingMode: 'user'
                     }}
-                  >
-                    Back to Login
-                  </Button>
-                </div>
+                  />
+                )}
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  onClick={captureImage}
+                  disabled={biometricLoading || !!capturedImage}
+                >
+                  Capture
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCapturedImage(null)}
+                  disabled={biometricLoading || !capturedImage}
+                >
+                  Retake
+                </Button>
+              </div>
+
+              <Button
+                type="button"
+                className="w-full"
+                onClick={completeBiometricAuth}
+                disabled={biometricLoading || !capturedImage}
+              >
+                {biometricLoading ? 'Verifying face...' : 'Verify Face & Continue'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPhase(1)
+                  setOtp('')
+                  setCapturedImage(null)
+                  setOtpAuthData(null)
+                }}
+                className="w-full"
+                disabled={biometricLoading}
+              >
+                Back to Login
+              </Button>
             </div>
           )}
         </div>

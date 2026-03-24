@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import Card, { CardBody } from '../components/ui/Card'
-import Button from '../components/ui/Button'
-import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle, Shield } from 'lucide-react'
+import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const Dashboard = () => {
@@ -15,7 +13,6 @@ const Dashboard = () => {
   })
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState([])
-  const navigate = useNavigate()
 
   useEffect(() => {
     fetchDashboardData()
@@ -104,22 +101,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Welcome back! Here's what's happening with your events.
-          </p>
-        </div>
-        <Button
-          type="button"
-          className="inline-flex items-center gap-2"
-          variant="outline"
-          onClick={() => navigate('/biometric-enroll')}
-        >
-          <Shield className="w-4 h-4" />
-          Enroll Face Login
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">Welcome back! Here's what's happening with your events.</p>
       </div>
 
       {/* Stats Grid */}

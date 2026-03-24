@@ -7,7 +7,6 @@ import Events from './pages/Events'
 import Bookings from './pages/Bookings'
 import Inventory from './pages/Inventory'
 import Reports from './pages/Reports'
-import BiometricEnroll from './pages/BiometricEnroll'
 import PrivateRoute from './components/PrivateRoute'
 import Layout from './components/Layout'
 
@@ -25,7 +24,6 @@ function App() {
               <Route path="bookings" element={<Bookings />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="biometric-enroll" element={<BiometricEnroll />} />
             </Route>
           </Routes>
         </Router>
