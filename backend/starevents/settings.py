@@ -68,26 +68,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'starevents.wsgi.application'
 
 # Database
-DATABASE_URL = config(
-    'DATABASE_URL',
-    default='postgresql://starevents_user:starevents_pass@localhost:5432/starevents_db'
-)
-
-if dj_database_url:
-    DATABASES = {
-        'default': dj_database_url.config(default=DATABASE_URL)
+# TEMPORARY: Using SQLite for testing (no PostgreSQL required)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='starevents_db'),
-            'USER': config('DB_USER', default='starevents_user'),
-            'PASSWORD': config('DB_PASSWORD', default='starevents_pass'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
-        }
-    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
