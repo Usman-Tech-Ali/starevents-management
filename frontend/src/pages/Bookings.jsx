@@ -4,7 +4,10 @@ import { useToast } from '../contexts/ToastContext'
 import Card, { CardBody, CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Loading from '../components/ui/Loading'
-import { Search, CheckCircle, XCircle, Clock, Calendar, User, Mail, Phone, DollarSign } from 'lucide-react'
+import Modal from '../components/ui/Modal'
+import Input from '../components/ui/Input'
+import Select from '../components/ui/Select'
+import { Search, CheckCircle, XCircle, Clock, Calendar, User, Mail, Phone, DollarSign, Plus, Ticket } from 'lucide-react'
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([])
@@ -12,6 +15,13 @@ const Bookings = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [formData, setFormData] = useState({
+    event: '',
+    number_of_tickets: 1,
+    special_requests: ''
+  })
+  const [submitting, setSubmitting] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -36,10 +46,41 @@ const Bookings = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await api.get('/events/events/')
+      const response = await api.get('/events/events/?status=published')
       setEvents(response.data.results || response.data || [])
     } catch (error) {
       console.error('Error fetching events:', error)
+    }
+  }
+
+  const handleCreateBooking = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      const selectedEvent = events.find(e => e.id === parseInt(formData.event))
+      if (!selectedEvent) {
+        showToast('Please select an event', 'error')
+        return
+      }
+
+      const bookingData = {
+        event: formData.event,
+        number_of_tickets: parseInt(formData.number_of_tickets),
+        total_amount: (selectedEvent.price * formData.number_of_tickets).toFixed(2),
+        special_requests: formData.special_requests
+      }
+
+      await api.post('/events/bookings/', bookingData)
+      showToast('Booking created successfully', 'success')
+      setShowCreateModal(false)
+      setFormData({ event: '', number_of_tickets: 1, special_requests: '' })
+      fetchBookings()
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to create booking'
+      showToast(errorMsg, 'error')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -98,6 +139,9 @@ const Bookings = () => {
     return events.find(e => e.id === eventId)
   }
 
+  const selectedEvent = events.find(e => e.id === parseInt(formData.event))
+  const totalAmount = selectedEvent ? (selectedEvent.price * formData.number_of_tickets).toFixed(2) : '0.00'
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -105,6 +149,10 @@ const Bookings = () => {
           <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
           <p className="mt-1 text-sm text-gray-500">Manage event bookings and reservations</p>
         </div>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          New Booking
+        </Button>
       </div>
 
       {/* Filters */}
@@ -146,7 +194,11 @@ const Bookings = () => {
         <Card>
           <CardBody className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No bookings found</p>
+            <p className="text-gray-500 mb-4">No bookings found</p>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Your First Booking
+            </Button>
           </CardBody>
         </Card>
       ) : (
@@ -161,7 +213,7 @@ const Bookings = () => {
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {booking.event_title || 'Event'}
+                            {booking.event_title || event?.title || 'Event'}
                           </h3>
                           <p className="text-sm text-gray-500">
                             Reference: <span className="font-mono font-medium">{booking.booking_reference}</span>
@@ -185,8 +237,8 @@ const Bookings = () => {
                           {new Date(booking.created_at).toLocaleDateString()}
                         </div>
                         <div className="flex items-center text-gray-600">
-                          <span className="mr-2">Tickets:</span>
-                          <span className="font-medium">{booking.number_of_tickets}</span>
+                          <Ticket className="w-4 h-4 mr-2" />
+                          <span className="font-medium">{booking.number_of_tickets} ticket(s)</span>
                         </div>
                         <div className="flex items-center text-gray-600">
                           <DollarSign className="w-4 h-4 mr-2" />
@@ -238,6 +290,95 @@ const Bookings = () => {
           })}
         </div>
       )}
+
+      {/* Create Booking Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Booking"
+      >
+        <form onSubmit={handleCreateBooking} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Event
+            </label>
+            <select
+              value={formData.event}
+              onChange={(e) => setFormData({ ...formData, event: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="">Choose an event...</option>
+              {events.map(event => (
+                <option key={event.id} value={event.id}>
+                  {event.title} - £{event.price} ({event.available_capacity || 0} seats available)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Number of Tickets
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={selectedEvent?.available_capacity || 100}
+              value={formData.number_of_tickets}
+              onChange={(e) => setFormData({ ...formData, number_of_tickets: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+            {selectedEvent && (
+              <p className="mt-1 text-sm text-gray-500">
+                Available: {selectedEvent.available_capacity || 0} seats
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Special Requests (Optional)
+            </label>
+            <textarea
+              value={formData.special_requests}
+              onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
+              rows="3"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Any special requirements or requests..."
+            />
+          </div>
+
+          {selectedEvent && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Total Amount:</span>
+                <span className="text-xl font-bold text-blue-600">£{totalAmount}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+              className="flex-1"
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={submitting || !formData.event}
+            >
+              {submitting ? 'Creating...' : 'Create Booking'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

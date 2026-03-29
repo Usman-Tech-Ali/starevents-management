@@ -65,7 +65,22 @@ const Login = () => {
       })
     } catch (err) {
       console.error('OTP request error:', err.response?.data)
-      showToast(err.response?.data?.error || err.response?.data?.message || 'Failed to send OTP', 'error')
+      const errorData = err.response?.data
+      let errorMessage = 'Failed to send OTP'
+      
+      if (errorData) {
+        if (errorData.error) {
+          errorMessage = errorData.error
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.non_field_errors) {
+          errorMessage = Array.isArray(errorData.non_field_errors) 
+            ? errorData.non_field_errors[0] 
+            : errorData.non_field_errors
+        }
+      }
+      
+      showToast(errorMessage, 'error')
     }
   }
 
