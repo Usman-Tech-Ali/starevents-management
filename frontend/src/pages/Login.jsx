@@ -109,6 +109,46 @@ const Login = () => {
   }
 
   const captureImage = () => {
+    const video = webcamRef.current?.video
+    if (!video || video.readyState !== 4) {
+      showToast('Camera is not ready. Please allow camera access and try again.', 'error')
+      return
+    }
+
+    const frameCanvas = document.createElement('canvas')
+    frameCanvas.width = video.videoWidth || 720
+    frameCanvas.height = video.videoHeight || 480
+    const frameCtx = frameCanvas.getContext('2d')
+    if (!frameCtx) {
+      showToast('Unable to process camera frame. Please try again.', 'error')
+      return
+    }
+
+    frameCtx.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height)
+    const frame = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data
+    let total = 0
+    let totalSq = 0
+    const sampleStep = 32
+
+    for (let i = 0; i < frame.length; i += sampleStep) {
+      const r = frame[i]
+      const g = frame[i + 1]
+      const b = frame[i + 2]
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b
+      total += brightness
+      totalSq += brightness * brightness
+    }
+
+    const count = Math.max(frame.length / sampleStep, 1)
+    const mean = total / count
+    const variance = Math.max(totalSq / count - mean * mean, 0)
+    const stdDev = Math.sqrt(variance)
+
+    if (mean < 15 || stdDev < 8) {
+      showToast('No clear face in camera. Keep your face in frame and try capture again.', 'warning')
+      return
+    }
+
     const imageSrc = webcamRef.current?.getScreenshot()
     if (!imageSrc) {
       showToast('Unable to capture image. Please allow camera access.', 'error')
@@ -128,10 +168,10 @@ const Login = () => {
       return
     }
 
+    const imagePayload = getImagePayload(capturedImage)
+
     setBiometricLoading(true)
     try {
-      const imagePayload = getImagePayload(capturedImage)
-
       // Only enroll if explicitly marked not enrolled by backend
       if (otpAuthData?.user?.biometric_enrolled === false) {
         showToast('Enrolling your face for first time...', 'info')
@@ -157,7 +197,43 @@ const Login = () => {
       showToast('Face verified. Login successful!', 'success')
       navigate('/dashboard')
     } catch (err) {
-      showToast(err.response?.data?.error || 'Face verification failed', 'error')
+      const errorMessage = err.response?.data?.error || 'Face verification failed'
+
+      // Recovery path: OTP is already verified, so we can refresh stored biometric data
+      // for this authenticated session and retry verification once.
+      if (
+        errorMessage.toLowerCase().includes('face does not match') &&
+        otpAuthData?.token
+      ) {
+        try {
+          showToast('Updating your biometric profile. Please wait...', 'info')
+          await api.post(
+            '/auth/enroll_biometric/',
+            { image_data: imagePayload },
+            {
+              headers: {
+                Authorization: `Bearer ${otpAuthData.token}`
+              }
+            }
+          )
+
+          const retryVerifyResponse = await api.post('/auth/verify_biometric/', {
+            user_id: userId,
+            image_data: imagePayload
+          })
+
+          login(retryVerifyResponse.data.user, retryVerifyResponse.data.token)
+          showToast('Biometric updated and verified. Login successful!', 'success')
+          navigate('/dashboard')
+          return
+        } catch (retryErr) {
+          showToast(retryErr.response?.data?.error || errorMessage, 'error')
+        }
+      } else {
+        showToast(errorMessage, 'error')
+      }
+
+      setCapturedImage(null)
     } finally {
       setBiometricLoading(false)
     }

@@ -7,6 +7,7 @@ PyJWT==2.8.0
 django-environ==0.11.2
 dj-database-url==2.1.0
 Pillow>=10.0.0
+opencv-python==4.10.0.84
 reportlab==4.0.7
 openpyxl==3.1.2
 dlib==19.24.6

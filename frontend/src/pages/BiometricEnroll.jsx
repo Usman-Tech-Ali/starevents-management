@@ -68,7 +68,36 @@ const BiometricEnroll = () => {
       canvas.width = width
       canvas.height = height
       const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        showToast('Unable to process camera frame. Please try again.', 'error')
+        return
+      }
+
       ctx.drawImage(video, 0, 0, width, height)
+
+      const frame = ctx.getImageData(0, 0, width, height).data
+      let total = 0
+      let totalSq = 0
+      const sampleStep = 32
+
+      for (let i = 0; i < frame.length; i += sampleStep) {
+        const r = frame[i]
+        const g = frame[i + 1]
+        const b = frame[i + 2]
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b
+        total += brightness
+        totalSq += brightness * brightness
+      }
+
+      const count = Math.max(frame.length / sampleStep, 1)
+      const mean = total / count
+      const variance = Math.max(totalSq / count - mean * mean, 0)
+      const stdDev = Math.sqrt(variance)
+
+      if (mean < 15 || stdDev < 8) {
+        showToast('No clear face in camera. Keep your face visible and try again.', 'warning')
+        return
+      }
 
       const dataUrl = canvas.toDataURL('image/png')
       const base64Image = dataUrl.split(',')[1]

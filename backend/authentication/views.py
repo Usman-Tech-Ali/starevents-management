@@ -15,6 +15,12 @@ import base64
 import io
 from PIL import Image, ImageOps, ImageFilter
 try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    CV2_AVAILABLE = False
+try:
     import face_recognition
     FACE_RECOGNITION_AVAILABLE = True
 except ImportError:
@@ -30,6 +36,33 @@ from .utils import send_otp_email, send_otp_sms, log_audit_event
 EMBEDDING_PREFIX = b'ENCV1'
 IMAGE_PREFIX = b'IMGV1'
 IMAGE_PREFIX_V2 = b'IMGV2'
+
+MIN_IMAGE_SIDE = 160
+MIN_DYNAMIC_RANGE = 12
+MIN_BRIGHTNESS_STD = 7.0
+MIN_SHARPNESS_SCORE = 4.0
+MIN_FACE_AREA_RATIO = 0.025
+
+
+def _ensure_face_detectors_loaded():
+    """Attempt lazy imports so detector availability can recover without full environment rebuild."""
+    global cv2, CV2_AVAILABLE, face_recognition, FACE_RECOGNITION_AVAILABLE
+
+    if not CV2_AVAILABLE:
+        try:
+            import cv2 as _cv2
+            cv2 = _cv2
+            CV2_AVAILABLE = True
+        except ImportError:
+            pass
+
+    if not FACE_RECOGNITION_AVAILABLE:
+        try:
+            import face_recognition as _face_recognition
+            face_recognition = _face_recognition
+            FACE_RECOGNITION_AVAILABLE = True
+        except ImportError:
+            pass
 
 
 def _image_data_to_rgb_array(image_data):
@@ -119,6 +152,94 @@ def _hamming_distance_bytes(hash_a, hash_b):
     for a_byte, b_byte in zip(hash_a, hash_b):
         distance += int((a_byte ^ b_byte).bit_count())
     return distance
+
+
+def _estimate_sharpness_score(gray_array):
+    """Estimate sharpness via gradient variance; lower score means blurrier image."""
+    gray_float = gray_array.astype(np.float32)
+    grad_y, grad_x = np.gradient(gray_float)
+    magnitude = np.hypot(grad_x, grad_y)
+    return float(np.var(magnitude))
+
+
+def _detect_faces(image_array):
+    """Detect face boxes using face_recognition first, then OpenCV cascade fallback."""
+    _ensure_face_detectors_loaded()
+
+    if FACE_RECOGNITION_AVAILABLE:
+        model = settings.FACE_RECOGNITION_MODEL
+        locations = face_recognition.face_locations(image_array, model=model)
+        if locations:
+            return locations
+
+        pil_img = Image.fromarray(image_array)
+        enhanced = np.asarray(ImageOps.autocontrast(pil_img), dtype=np.uint8)
+        locations = face_recognition.face_locations(enhanced, model=model)
+        if locations:
+            return locations
+
+    if CV2_AVAILABLE:
+        gray = np.asarray(Image.fromarray(image_array).convert('L'), dtype=np.uint8)
+        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        classifier = cv2.CascadeClassifier(cascade_path)
+        detections = classifier.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(60, 60)
+        )
+
+        # Convert OpenCV boxes (x, y, w, h) to (top, right, bottom, left)
+        return [(int(y), int(x + w), int(y + h), int(x)) for (x, y, w, h) in detections]
+
+    return []
+
+
+def _validate_face_capture(image_array, require_face_checks=True):
+    """
+    Validate that the frame is usable for biometric verification.
+    Returns (is_valid, error_message, face_locations).
+    """
+    if image_array is None or image_array.size == 0:
+        return False, 'No image received. Please keep your face in the camera frame and retake.', []
+
+    height, width = image_array.shape[:2]
+    if min(height, width) < MIN_IMAGE_SIDE:
+        return False, 'Captured image is too small. Move closer and retake.', []
+
+    gray = np.asarray(Image.fromarray(image_array).convert('L'), dtype=np.uint8)
+    dynamic_range = int(gray.max()) - int(gray.min())
+    brightness_std = float(gray.std())
+    sharpness_score = _estimate_sharpness_score(gray)
+
+    if dynamic_range < MIN_DYNAMIC_RANGE or brightness_std < MIN_BRIGHTNESS_STD:
+        return False, 'Empty or unclear frame detected. Please keep your face visible in the camera and retake.', []
+
+    if sharpness_score < MIN_SHARPNESS_SCORE:
+        return False, 'Image is blurry. Hold still, improve lighting, and retake.', []
+
+    if not require_face_checks:
+        return True, None, []
+
+    face_locations = _detect_faces(image_array)
+    if not face_locations and not FACE_RECOGNITION_AVAILABLE and not CV2_AVAILABLE:
+        return False, 'Face detection service is unavailable. Please contact admin to enable biometric dependencies.', []
+
+    if len(face_locations) == 0:
+        return False, 'No face detected. Please place your face clearly in the frame and retake.', []
+
+    if len(face_locations) > 1:
+        return False, 'Multiple faces detected. Ensure only your face is visible and retake.', []
+
+    top, right, bottom, left = face_locations[0]
+    face_area = max((bottom - top), 0) * max((right - left), 0)
+    frame_area = max(height * width, 1)
+    face_ratio = face_area / frame_area
+
+    if face_ratio < MIN_FACE_AREA_RATIO:
+        return False, 'Face is too far from camera. Move closer and retake.', []
+
+    return True, None, face_locations
 
 
 def _extract_face_encoding(image_array):
@@ -335,29 +456,19 @@ class AuthViewSet(viewsets.ViewSet):
                 
                 # Load stored embedding and compare
                 stored_image_bytes = _to_bytes(user.biometric_embedding)
+
+                # Always require visible face in frame, regardless of storage mode.
+                is_valid, validation_error, _ = _validate_face_capture(image_array, require_face_checks=True)
+                if not is_valid:
+                    return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+
                 current_encoding = _extract_face_encoding(image_array)
 
                 is_match = False
 
                 if stored_image_bytes.startswith(EMBEDDING_PREFIX):
                     if current_encoding is None:
-                        # Fallback: try hashing if face encoding not possible
-                        stored_hash = _compute_image_hash_from_bytes(
-                            _image_data_to_rgb_array(image_data)[0]
-                        )
-                        current_hash = _compute_image_hash_from_bytes(image_bytes)
-                        hash_distance = _hamming_distance_bytes(stored_hash, current_hash)
-                        is_match = hash_distance <= 22  # More lenient threshold
-                        if is_match:
-                            log_audit_event(user, 'biometric_used', request)
-                            user.unlock_account()
-                            token = generate_jwt_token(user)
-                            return Response({
-                                'message': 'Biometric verified successfully (fallback hash)',
-                                'token': token,
-                                'user': UserSerializer(user).data
-                            }, status=status.HTTP_200_OK)
-                        return Response({'error': 'Face could not be processed. Please capture a clearer image with good lighting.'}, status=status.HTTP_400_BAD_REQUEST)
+                        return Response({'error': 'Face encoding failed. Ensure your face is clearly visible and retake.'}, status=status.HTTP_400_BAD_REQUEST)
 
                     stored_encoding_bytes = stored_image_bytes[len(EMBEDDING_PREFIX):]
                     stored_encoding = np.frombuffer(stored_encoding_bytes, dtype=np.float64)
@@ -432,12 +543,16 @@ class AuthViewSet(viewsets.ViewSet):
         
         try:
             image_bytes, image_array = _image_data_to_rgb_array(image_data)
+            is_valid, validation_error, _ = _validate_face_capture(image_array, require_face_checks=True)
+            if not is_valid:
+                return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
 
             face_encoding = _extract_face_encoding(image_array)
 
             if face_encoding is not None:
                 user.biometric_embedding = EMBEDDING_PREFIX + np.asarray(face_encoding, dtype=np.float64).tobytes()
             else:
+                # Safe fallback mode when facial encoding is not available.
                 fallback_signature = _compute_image_signature_v2(image_bytes)
                 user.biometric_embedding = IMAGE_PREFIX_V2 + fallback_signature
 
