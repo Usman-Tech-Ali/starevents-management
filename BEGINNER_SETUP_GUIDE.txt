@@ -1,0 +1,203 @@
+STAREVENTS MANAGEMENT SYSTEM - BEGINNER SETUP GUIDE
+
+This guide shows how to clone the project, install everything needed, run the app, and get the OTP.
+
+1) WHAT YOU NEED ON YOUR PC
+
+- GitHub Desktop
+- VS Code
+- Python 3.11 or newer
+- Node.js 18 or newer
+- npm (installed with Node.js)
+- Windows PowerShell
+- Internet connection for package installation
+
+Optional for production or Docker setup:
+- Docker Desktop
+- PostgreSQL
+
+2) CLONE THE PROJECT USING GITHUB DESKTOP
+
+Method 1: If you already have the GitHub repository URL
+
+- Open GitHub Desktop
+- Click File > Clone repository
+- Choose URL
+- Paste the repository URL
+- Choose a local folder on your PC
+- Click Clone
+
+Method 2: If the repository is already in your GitHub account
+
+- Open GitHub Desktop
+- Click File > Clone repository
+- Choose GitHub.com
+- Select the repository
+- Choose a local folder
+- Click Clone
+
+After cloning, open the project folder in VS Code.
+
+3) PROJECT FOLDERS
+
+- Backend: backend
+- Frontend: frontend
+
+4) BACKEND SETUP
+
+Open PowerShell and go to the backend folder:
+
+cd C:\Users\AL-MAKKAH\Desktop\face\starevents-management-main\backend
+
+Create a virtual environment if it does not already exist:
+
+python -m venv .venv
+
+Activate the virtual environment:
+
+.\.venv\Scripts\Activate.ps1
+
+Install Python dependencies:
+
+pip install -r requirements.txt
+
+If you get a NumPy or OpenCV error, run:
+
+pip install 'numpy<2'
+
+5) BACKEND ENVIRONMENT FILE
+
+The backend needs a .env file in the backend folder.
+
+For local development, use SQLite. Put this in backend\.env:
+
+DEBUG=True
+SECRET_KEY=django-insecure-dev-key-change-in-production
+JWT_SECRET_KEY=jwt-secret-dev-key-change-in-production
+ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=sqlite:///db.sqlite3
+DB_NAME=db.sqlite3
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:8000
+
+This local SQLite database is saved in backend\db.sqlite3.
+
+6) RUN BACKEND MIGRATIONS
+
+Still inside the backend folder and with the virtual environment active, run:
+
+python manage.py migrate
+
+7) START THE BACKEND SERVER
+
+Run this command:
+
+python manage.py runserver 0.0.0.0:8000
+
+The backend will run at:
+
+http://127.0.0.1:8000
+
+8) FRONTEND SETUP
+
+Open a second PowerShell window and go to the frontend folder:
+
+cd C:\Users\AL-MAKKAH\Desktop\face\starevents-management-main\frontend
+
+Install frontend dependencies:
+
+npm install
+
+9) START THE FRONTEND SERVER
+
+Run this command:
+
+npm run dev
+
+The frontend will run at:
+
+http://localhost:3000
+
+10) HOW TO OPEN THE APP
+
+- Open your browser
+- Go to http://localhost:3000/login
+- Enter your username and password
+- Continue with OTP
+- Then continue with face verification or face enrollment
+
+11) HOW TO GET THE OTP
+
+There are 3 ways:
+
+Option A: Console OTP in development
+
+- If EMAIL_BACKEND is set to django.core.mail.backends.console.EmailBackend
+- The OTP will appear in the backend terminal where python manage.py runserver is running
+- Look for a line like:
+  Your OTP code is: 123456
+
+Option B: SMS or real email
+
+- If Twilio or real email is configured, the OTP is sent to the phone or email address saved for the user
+
+Option C: Read it from the database in PowerShell
+
+- Go to the backend folder
+- Activate the virtual environment
+- Run:
+
+python manage.py shell -c "from authentication.models import OTPToken; from django.contrib.auth import get_user_model; User = get_user_model(); user = User.objects.get(username='testuser'); otp = OTPToken.objects.filter(user=user, is_used=False).order_by('-created_at').first(); print(otp.token if otp else 'NO_OTP')"
+
+This prints the latest unused OTP for that user.
+
+12) FIRST LOGIN FLOW
+
+1. Enter username and password
+2. Request OTP
+3. Read OTP from the backend terminal or database
+4. Enter the OTP in the login page
+5. Capture the face
+6. On first login, the face is saved in the backend database for that user
+7. Login finishes and you go to the dashboard
+
+13) SECOND LOGIN FLOW
+
+1. Enter the same username and password
+2. Request a new OTP
+3. Read the new OTP
+4. Enter the OTP
+5. Capture the face again
+6. The backend compares the new face with the stored face for that same user
+7. If the face matches, login succeeds
+
+14) HOW TO STOP THE PROJECT
+
+- In the backend terminal, press CTRL + C
+- In the frontend terminal, press CTRL + C
+
+15) IF SOMETHING DOES NOT WORK
+
+- Check that backend and frontend are both running
+- Check that backend is using the SQLite .env settings for local use
+- Check that Python packages are installed inside .venv
+- Check that Node dependencies are installed inside frontend\node_modules
+- If OTP is missing, request a new OTP again
+
+16) SIMPLE RUN COMMANDS
+
+Backend:
+
+cd backend
+.\.venv\Scripts\Activate.ps1
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+
+Frontend:
+
+cd frontend
+npm install
+npm run dev
+
+END OF GUIDE

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { useAuth } from '../contexts/AuthContext'
 import Card, { CardBody } from '../components/ui/Card'
 import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -11,8 +12,10 @@ const Dashboard = () => {
     lowStockItems: 0,
     upcomingEvents: 0
   })
+  const [biometricOverview, setBiometricOverview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState([])
+  const { user } = useAuth()
 
   useEffect(() => {
     fetchDashboardData()
@@ -42,6 +45,11 @@ const Dashboard = () => {
       // Prepare chart data
       const monthlyData = prepareChartData(events, bookings)
       setChartData(monthlyData)
+
+      if (user?.role === 'admin' || user?.role === 'staff') {
+        const biometricRes = await api.get('/auth/biometric_overview/')
+        setBiometricOverview(biometricRes.data)
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -105,6 +113,74 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">Welcome back! Here's what's happening with your events.</p>
       </div>
+
+      {biometricOverview && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Biometric Overview</h2>
+            <p className="mt-1 text-sm text-gray-500">Enrollment and account status snapshot for authorized staff.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card hover>
+              <CardBody>
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{biometricOverview.summary.total_users}</p>
+              </CardBody>
+            </Card>
+            <Card hover>
+              <CardBody>
+                <p className="text-sm font-medium text-gray-600">Biometric Enrolled</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{biometricOverview.summary.enrolled_users}</p>
+              </CardBody>
+            </Card>
+            <Card hover>
+              <CardBody>
+                <p className="text-sm font-medium text-gray-600">Pending Enrollment</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{biometricOverview.summary.pending_users}</p>
+              </CardBody>
+            </Card>
+            <Card hover>
+              <CardBody>
+                <p className="text-sm font-medium text-gray-600">Locked Accounts</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{biometricOverview.summary.locked_users}</p>
+              </CardBody>
+            </Card>
+          </div>
+
+          <Card>
+            <CardBody>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Enrollment Status</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biometric</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed Attempts</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {biometricOverview.users.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.username}<div className="text-xs text-gray-500">{item.email}</div></td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.role}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${item.biometric_enrolled ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {item.biometric_enrolled ? 'Enrolled' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.failed_login_attempts}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

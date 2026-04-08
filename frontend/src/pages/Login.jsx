@@ -4,8 +4,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import api from '../api/axios'
 import Button from '../components/ui/Button'
-import Input from '../components/ui/Input'
-import Loading from '../components/ui/Loading'
 import Webcam from 'react-webcam'
 import { Lock, Mail, Smartphone, Shield } from 'lucide-react'
 
@@ -17,7 +15,7 @@ const Login = () => {
   const [userId, setUserId] = useState(null)
   const [deliveryMethod, setDeliveryMethod] = useState('email')
   const [capturedImage, setCapturedImage] = useState(null)
-  const [otpAuthData, setOtpAuthData] = useState(null)
+  const [biometricSession, setBiometricSession] = useState(null)
   const [biometricLoading, setBiometricLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const webcamRef = useRef(null)
@@ -26,23 +24,45 @@ const Login = () => {
   const { showToast } = useToast()
   const navigate = useNavigate()
 
+  const resolveBiometricError = (errorPayload) => {
+    if (!errorPayload) return 'Face verification failed'
+
+    const errorCode = errorPayload.error_code
+    if (!errorCode) return errorPayload.error || 'Face verification failed'
+
+    const errorsByCode = {
+      no_face_detected: 'No face detected. Keep your full face visible and try again.',
+      multiple_faces_detected: 'Multiple faces detected. Keep only your face in frame.',
+      face_too_small: 'Move closer to the camera so your face is larger in the frame.',
+      face_not_centered: 'Center your face in the frame before verifying.',
+      image_too_dark: 'Lighting is too low. Increase light and try again.',
+      image_too_bright: 'Image is too bright. Reduce glare and try again.',
+      image_too_blurry: 'Image is blurry. Hold still and retake the photo.',
+      face_features_missing: 'Face details were not clear enough. Retake the photo with a straight front face.',
+      re_enroll_required: 'Biometric profile format changed. Please sign in again and complete fresh face enrollment.',
+      biometric_service_unavailable: 'Biometric service is temporarily unavailable. Please try again shortly.',
+      missing_biometric_challenge: 'Your biometric session is missing. Please sign in again.',
+      invalid_biometric_challenge: 'Your biometric session is invalid. Please sign in again.',
+      biometric_challenge_expired: 'Your biometric session expired. Please sign in again.',
+      biometric_already_enrolled: 'Your biometric profile already exists. Please verify your face instead.'
+    }
+
+    return errorsByCode[errorCode] || errorPayload.error || 'Face verification failed'
+  }
+
   const handlePasswordLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
     
     try {
       const response = await api.post('/auth/login_phase1/', { username, password })
-      const { phase: nextPhase, user_id, requires_otp, requires_biometric } = response.data
-      
-      if (requires_biometric) {
-        setPhase(3)
-        setUserId(user_id)
-        showToast('Too many failed attempts. Biometric authentication required.', 'warning')
-      } else if (requires_otp) {
+      const { user_id, requires_otp } = response.data
+
+      if (requires_otp) {
         setPhase(2)
         setUserId(user_id)
         // Call requestOTP with user_id directly to avoid timing issues
-        await requestOTP(user_id)
+        await requestOTP(user_id, deliveryMethod)
         showToast('OTP sent successfully', 'success')
       }
     } catch (err) {
@@ -52,7 +72,7 @@ const Login = () => {
     }
   }
 
-  const requestOTP = async (userIdParam = null) => {
+  const requestOTP = async (userIdParam = null, deliveryMethodParam = deliveryMethod) => {
     try {
       const userIdToUse = userIdParam || userId
       if (!userIdToUse) {
@@ -61,26 +81,11 @@ const Login = () => {
       }
       await api.post('/auth/request_otp/', {
         user_id: userIdToUse,
-        delivery_method: deliveryMethod
+        delivery_method: deliveryMethodParam
       })
     } catch (err) {
       console.error('OTP request error:', err.response?.data)
-      const errorData = err.response?.data
-      let errorMessage = 'Failed to send OTP'
-      
-      if (errorData) {
-        if (errorData.error) {
-          errorMessage = errorData.error
-        } else if (errorData.message) {
-          errorMessage = errorData.message
-        } else if (errorData.non_field_errors) {
-          errorMessage = Array.isArray(errorData.non_field_errors) 
-            ? errorData.non_field_errors[0] 
-            : errorData.non_field_errors
-        }
-      }
-      
-      showToast(errorMessage, 'error')
+      showToast(err.response?.data?.error || err.response?.data?.message || 'Failed to send OTP', 'error')
     }
   }
 
@@ -94,13 +99,20 @@ const Login = () => {
         otp: otp
       })
 
-      setOtpAuthData({
-        user: response.data.user,
-        token: response.data.token
+      setBiometricSession({
+        challengeToken: response.data.challenge_token,
+        biometricEnrolled: response.data.biometric_enrolled,
+        nextStep: response.data.next_step,
+        user: response.data.user
       })
       setCapturedImage(null)
       setPhase(3)
-      showToast('OTP verified. Continue with face detection.', 'success')
+      showToast(
+        response.data.biometric_enrolled
+          ? 'OTP verified. Continue with face matching.'
+          : 'OTP verified. Capture your face to save your biometric profile.',
+        'success'
+      )
     } catch (err) {
       showToast(err.response?.data?.error || 'Invalid OTP', 'error')
     } finally {
@@ -109,46 +121,6 @@ const Login = () => {
   }
 
   const captureImage = () => {
-    const video = webcamRef.current?.video
-    if (!video || video.readyState !== 4) {
-      showToast('Camera is not ready. Please allow camera access and try again.', 'error')
-      return
-    }
-
-    const frameCanvas = document.createElement('canvas')
-    frameCanvas.width = video.videoWidth || 720
-    frameCanvas.height = video.videoHeight || 480
-    const frameCtx = frameCanvas.getContext('2d')
-    if (!frameCtx) {
-      showToast('Unable to process camera frame. Please try again.', 'error')
-      return
-    }
-
-    frameCtx.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height)
-    const frame = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data
-    let total = 0
-    let totalSq = 0
-    const sampleStep = 32
-
-    for (let i = 0; i < frame.length; i += sampleStep) {
-      const r = frame[i]
-      const g = frame[i + 1]
-      const b = frame[i + 2]
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b
-      total += brightness
-      totalSq += brightness * brightness
-    }
-
-    const count = Math.max(frame.length / sampleStep, 1)
-    const mean = total / count
-    const variance = Math.max(totalSq / count - mean * mean, 0)
-    const stdDev = Math.sqrt(variance)
-
-    if (mean < 15 || stdDev < 8) {
-      showToast('No clear face in camera. Keep your face in frame and try capture again.', 'warning')
-      return
-    }
-
     const imageSrc = webcamRef.current?.getScreenshot()
     if (!imageSrc) {
       showToast('Unable to capture image. Please allow camera access.', 'error')
@@ -168,72 +140,45 @@ const Login = () => {
       return
     }
 
-    const imagePayload = getImagePayload(capturedImage)
+    if (!biometricSession?.challengeToken) {
+      showToast('Your biometric session expired. Please sign in again.', 'error')
+      setPhase(1)
+      return
+    }
 
     setBiometricLoading(true)
     try {
-      // Only enroll if explicitly marked not enrolled by backend
-      if (otpAuthData?.user?.biometric_enrolled === false) {
-        showToast('Enrolling your face for first time...', 'info')
-        await api.post(
-          '/auth/enroll_biometric/',
-          { image_data: imagePayload },
-          {
-            headers: {
-              Authorization: `Bearer ${otpAuthData.token}`
-            }
+      const imagePayload = getImagePayload(capturedImage)
+
+      const endpoint = biometricSession.biometricEnrolled
+        ? '/auth/verify_biometric/'
+        : '/auth/enroll_biometric/'
+
+      const response = await api.post(
+        endpoint,
+        {
+          user_id: userId,
+          image_data: imagePayload,
+          challenge_token: biometricSession.challengeToken
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${biometricSession.challengeToken}`
           }
-        )
-        showToast('Face enrolled successfully!', 'success')
-      }
+        }
+      )
 
-      // Verify the face (on first login compares with just-enrolled image, on subsequent logins compares with stored enrollment)
-      const verifyResponse = await api.post('/auth/verify_biometric/', {
-        user_id: userId,
-        image_data: imagePayload
-      })
-
-      login(verifyResponse.data.user, verifyResponse.data.token)
-      showToast('Face verified. Login successful!', 'success')
+      login(response.data.user, response.data.token)
+      showToast(
+        biometricSession.biometricEnrolled
+          ? 'Face verified. Login successful!'
+          : 'Face enrolled and saved. Login successful!',
+        'success'
+      )
       navigate('/dashboard')
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Face verification failed'
-
-      // Recovery path: OTP is already verified, so we can refresh stored biometric data
-      // for this authenticated session and retry verification once.
-      if (
-        errorMessage.toLowerCase().includes('face does not match') &&
-        otpAuthData?.token
-      ) {
-        try {
-          showToast('Updating your biometric profile. Please wait...', 'info')
-          await api.post(
-            '/auth/enroll_biometric/',
-            { image_data: imagePayload },
-            {
-              headers: {
-                Authorization: `Bearer ${otpAuthData.token}`
-              }
-            }
-          )
-
-          const retryVerifyResponse = await api.post('/auth/verify_biometric/', {
-            user_id: userId,
-            image_data: imagePayload
-          })
-
-          login(retryVerifyResponse.data.user, retryVerifyResponse.data.token)
-          showToast('Biometric updated and verified. Login successful!', 'success')
-          navigate('/dashboard')
-          return
-        } catch (retryErr) {
-          showToast(retryErr.response?.data?.error || errorMessage, 'error')
-        }
-      } else {
-        showToast(errorMessage, 'error')
-      }
-
-      setCapturedImage(null)
+      const friendlyError = resolveBiometricError(err.response?.data)
+      showToast(friendlyError, 'error')
     } finally {
       setBiometricLoading(false)
     }
@@ -252,7 +197,7 @@ const Login = () => {
           <p className="mt-2 text-sm text-gray-600">
             {phase === 1 && 'Sign in to your account'}
             {phase === 2 && 'Enter your OTP code'}
-            {phase === 3 && 'Biometric authentication required'}
+            {phase === 3 && (biometricSession?.biometricEnrolled ? 'Face verification required' : 'First-time face enrollment')}
           </p>
         </div>
 
@@ -328,7 +273,7 @@ const Login = () => {
                     type="button"
                     onClick={() => { 
                       setDeliveryMethod('email')
-                      requestOTP(userId)
+                      requestOTP(userId, 'email')
                     }}
                     className={`p-3 border-2 rounded-lg transition-all ${
                       deliveryMethod === 'email'
@@ -343,7 +288,7 @@ const Login = () => {
                     type="button"
                     onClick={() => { 
                       setDeliveryMethod('sms')
-                      requestOTP(userId)
+                      requestOTP(userId, 'sms')
                     }}
                     className={`p-3 border-2 rounded-lg transition-all ${
                       deliveryMethod === 'sms'
@@ -357,7 +302,7 @@ const Login = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => requestOTP(userId)}
+                  onClick={() => requestOTP(userId, deliveryMethod)}
                   className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
                   Resend OTP
@@ -409,7 +354,12 @@ const Login = () => {
             <div className="space-y-6">
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Complete face detection to finish login.
+                  {biometricSession?.biometricEnrolled
+                    ? 'Capture your face to verify your identity and finish login.'
+                    : 'Capture your face once to save your biometric profile and finish login.'}
+                </p>
+                <p className="text-xs text-blue-700 mt-2">
+                  Use good light, keep one face only, look straight, and fill most of the frame.
                 </p>
               </div>
 
@@ -459,7 +409,11 @@ const Login = () => {
                 onClick={completeBiometricAuth}
                 disabled={biometricLoading || !capturedImage}
               >
-                {biometricLoading ? 'Verifying face...' : 'Verify Face & Continue'}
+                {biometricLoading
+                  ? 'Processing face...'
+                  : biometricSession?.biometricEnrolled
+                    ? 'Verify Face & Continue'
+                    : 'Save Face & Continue'}
               </Button>
 
               <Button
@@ -467,9 +421,10 @@ const Login = () => {
                 variant="outline"
                 onClick={() => {
                   setPhase(1)
+                  setUserId(null)
                   setOtp('')
                   setCapturedImage(null)
-                  setOtpAuthData(null)
+                  setBiometricSession(null)
                 }}
                 className="w-full"
                 disabled={biometricLoading}
