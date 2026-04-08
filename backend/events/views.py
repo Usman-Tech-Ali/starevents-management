@@ -87,9 +87,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def confirm(self, request, pk=None):
         """Confirm a booking"""
         booking = self.get_object()
-        
-        # Allow admin, staff, or the booking owner to confirm
-        if request.user.role not in ['admin', 'staff'] and booking.client != request.user:
+        if request.user.role not in ['admin', 'staff']:
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
         booking.status = 'confirmed'

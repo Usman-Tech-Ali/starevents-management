@@ -68,13 +68,34 @@ TEMPLATES = [
 WSGI_APPLICATION = 'starevents.wsgi.application'
 
 # Database
-# TEMPORARY: Using SQLite for testing (no PostgreSQL required)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = config(
+    'DATABASE_URL',
+    default='sqlite:///db.sqlite3'
+)
+
+# Support both SQLite and PostgreSQL
+if DATABASE_URL.startswith('sqlite'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, config('DB_NAME', default='db.sqlite3')),
+        }
     }
-}
+elif dj_database_url:
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL)
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='starevents_db'),
+            'USER': config('DB_USER', default='starevents_user'),
+            'PASSWORD': config('DB_PASSWORD', default='starevents_pass'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -155,9 +176,8 @@ TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
 TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
 
 # Face Recognition Settings
-# Tolerance: 0.6 = strict, 0.8 = more lenient (default: 0.75 for balanced matching)
-FACE_RECOGNITION_TOLERANCE = config('FACE_RECOGNITION_TOLERANCE', default=0.75, cast=float)
-FACE_RECOGNITION_MODEL = config('FACE_RECOGNITION_MODEL', default='hog')  # Use 'cnn' for better accuracy with difficult angles
+FACE_RECOGNITION_TOLERANCE = config('FACE_RECOGNITION_TOLERANCE', default=0.6, cast=float)
+FACE_RECOGNITION_MODEL = config('FACE_RECOGNITION_MODEL', default='hog')
 
 # GDPR Data Retention (in days)
 AUDIT_LOG_RETENTION_DAYS = config('AUDIT_LOG_RETENTION_DAYS', default=365, cast=int)

@@ -4,7 +4,7 @@ Authentication API Views - 3-Phase Security System
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django.contrib.auth import login
 from django.utils import timezone
 from django.conf import settings
@@ -13,19 +13,20 @@ import numpy as np
 import jwt
 import base64
 import io
+import importlib
 from PIL import Image, ImageOps, ImageFilter
+try:
+    face_recognition = importlib.import_module('face_recognition')
+    FACE_RECOGNITION_AVAILABLE = True
+except ImportError:
+    face_recognition = None
+    FACE_RECOGNITION_AVAILABLE = False
 try:
     import cv2
     CV2_AVAILABLE = True
 except ImportError:
     cv2 = None
     CV2_AVAILABLE = False
-try:
-    import face_recognition
-    FACE_RECOGNITION_AVAILABLE = True
-except ImportError:
-    face_recognition = None
-    FACE_RECOGNITION_AVAILABLE = False
 from .models import User, OTPToken, AuditLog
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
@@ -36,33 +37,14 @@ from .utils import send_otp_email, send_otp_sms, log_audit_event
 EMBEDDING_PREFIX = b'ENCV1'
 IMAGE_PREFIX = b'IMGV1'
 IMAGE_PREFIX_V2 = b'IMGV2'
-
-MIN_IMAGE_SIDE = 160
-MIN_DYNAMIC_RANGE = 12
-MIN_BRIGHTNESS_STD = 7.0
-MIN_SHARPNESS_SCORE = 4.0
-MIN_FACE_AREA_RATIO = 0.025
-
-
-def _ensure_face_detectors_loaded():
-    """Attempt lazy imports so detector availability can recover without full environment rebuild."""
-    global cv2, CV2_AVAILABLE, face_recognition, FACE_RECOGNITION_AVAILABLE
-
-    if not CV2_AVAILABLE:
-        try:
-            import cv2 as _cv2
-            cv2 = _cv2
-            CV2_AVAILABLE = True
-        except ImportError:
-            pass
-
-    if not FACE_RECOGNITION_AVAILABLE:
-        try:
-            import face_recognition as _face_recognition
-            face_recognition = _face_recognition
-            FACE_RECOGNITION_AVAILABLE = True
-        except ImportError:
-            pass
+BIOMETRIC_CHALLENGE_TOKEN_EXPIRATION_SECONDS = 900
+MIN_FACE_AREA_RATIO = 0.08
+MAX_FACE_CENTER_OFFSET = 0.45
+MIN_FACE_SHARPNESS_SCORE = 120.0
+MIN_FACE_BRIGHTNESS = 45.0
+MAX_FACE_BRIGHTNESS = 215.0
+FALLBACK_FACE_SIGNATURE_MAX_DISTANCE = 42
+HAAR_FACE_CASCADE = None
 
 
 def _image_data_to_rgb_array(image_data):
@@ -154,124 +136,216 @@ def _hamming_distance_bytes(hash_a, hash_b):
     return distance
 
 
-def _estimate_sharpness_score(gray_array):
-    """Estimate sharpness via gradient variance; lower score means blurrier image."""
-    gray_float = gray_array.astype(np.float32)
-    grad_y, grad_x = np.gradient(gray_float)
-    magnitude = np.hypot(grad_x, grad_y)
-    return float(np.var(magnitude))
-
-
-def _detect_faces(image_array):
-    """Detect face boxes using face_recognition first, then OpenCV cascade fallback."""
-    _ensure_face_detectors_loaded()
-
-    if FACE_RECOGNITION_AVAILABLE:
-        model = settings.FACE_RECOGNITION_MODEL
-        locations = face_recognition.face_locations(image_array, model=model)
-        if locations:
-            return locations
-
-        pil_img = Image.fromarray(image_array)
-        enhanced = np.asarray(ImageOps.autocontrast(pil_img), dtype=np.uint8)
-        locations = face_recognition.face_locations(enhanced, model=model)
-        if locations:
-            return locations
-
-    if CV2_AVAILABLE:
-        gray = np.asarray(Image.fromarray(image_array).convert('L'), dtype=np.uint8)
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        classifier = cv2.CascadeClassifier(cascade_path)
-        detections = classifier.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(60, 60)
-        )
-
-        # Convert OpenCV boxes (x, y, w, h) to (top, right, bottom, left)
-        return [(int(y), int(x + w), int(y + h), int(x)) for (x, y, w, h) in detections]
-
-    return []
-
-
-def _validate_face_capture(image_array, require_face_checks=True):
-    """
-    Validate that the frame is usable for biometric verification.
-    Returns (is_valid, error_message, face_locations).
-    """
-    if image_array is None or image_array.size == 0:
-        return False, 'No image received. Please keep your face in the camera frame and retake.', []
-
-    height, width = image_array.shape[:2]
-    if min(height, width) < MIN_IMAGE_SIDE:
-        return False, 'Captured image is too small. Move closer and retake.', []
-
-    gray = np.asarray(Image.fromarray(image_array).convert('L'), dtype=np.uint8)
-    dynamic_range = int(gray.max()) - int(gray.min())
-    brightness_std = float(gray.std())
-    sharpness_score = _estimate_sharpness_score(gray)
-
-    if dynamic_range < MIN_DYNAMIC_RANGE or brightness_std < MIN_BRIGHTNESS_STD:
-        return False, 'Empty or unclear frame detected. Please keep your face visible in the camera and retake.', []
-
-    if sharpness_score < MIN_SHARPNESS_SCORE:
-        return False, 'Image is blurry. Hold still, improve lighting, and retake.', []
-
-    if not require_face_checks:
-        return True, None, []
-
-    face_locations = _detect_faces(image_array)
-    if not face_locations and not FACE_RECOGNITION_AVAILABLE and not CV2_AVAILABLE:
-        return False, 'Face detection service is unavailable. Please contact admin to enable biometric dependencies.', []
-
-    if len(face_locations) == 0:
-        return False, 'No face detected. Please place your face clearly in the frame and retake.', []
-
-    if len(face_locations) > 1:
-        return False, 'Multiple faces detected. Ensure only your face is visible and retake.', []
-
-    top, right, bottom, left = face_locations[0]
-    face_area = max((bottom - top), 0) * max((right - left), 0)
-    frame_area = max(height * width, 1)
-    face_ratio = face_area / frame_area
-
-    if face_ratio < MIN_FACE_AREA_RATIO:
-        return False, 'Face is too far from camera. Move closer and retake.', []
-
-    return True, None, face_locations
-
-
 def _extract_face_encoding(image_array):
-    """
-    Try to extract a face encoding with preprocessing.
-    Returns None if face detection fails.
-    """
+    """Try to extract a face encoding; return None if unavailable on current platform/input."""
     if not FACE_RECOGNITION_AVAILABLE:
         return None
     try:
-        # Use HOG model (faster) - if fails, caller will try CNN via fallback
-        model = settings.FACE_RECOGNITION_MODEL
-        encodings = face_recognition.face_encodings(image_array, model=model)
-        
-        if encodings:
-            # Return the strongest/first face encoding
-            return encodings[0]
-        
-        # Preprocessing: try with enhanced contrast if no face found
-        pil_img = Image.fromarray(image_array)
-        pil_img = ImageOps.autocontrast(pil_img)
-        preprocessed = np.asarray(pil_img, dtype=np.uint8)
-        
-        encodings = face_recognition.face_encodings(preprocessed, model=model)
+        encodings = face_recognition.face_encodings(image_array)
         if encodings:
             return encodings[0]
-            
-    except Exception as e:
-        # Log the error but don't stop - will fallback to hash matching
-        pass
-    
+    except Exception:
+        return None
     return None
+
+
+def _get_haar_face_cascade():
+    global HAAR_FACE_CASCADE
+    if HAAR_FACE_CASCADE is not None:
+        return HAAR_FACE_CASCADE
+    if not CV2_AVAILABLE:
+        return None
+    cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    cascade = cv2.CascadeClassifier(cascade_path)
+    if cascade.empty():
+        return None
+    HAAR_FACE_CASCADE = cascade
+    return HAAR_FACE_CASCADE
+
+
+def _detect_single_face_location(image_array):
+    if FACE_RECOGNITION_AVAILABLE:
+        try:
+            model = getattr(settings, 'FACE_RECOGNITION_MODEL', 'hog')
+            face_locations = face_recognition.face_locations(image_array, model=model)
+        except Exception:
+            return []
+        return face_locations
+
+    cascade = _get_haar_face_cascade()
+    if cascade is None:
+        return []
+
+    gray_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+    detections = cascade.detectMultiScale(
+        gray_image,
+        scaleFactor=1.1,
+        minNeighbors=6,
+        minSize=(90, 90)
+    )
+
+    face_locations = []
+    for x, y, width, height in detections:
+        top = int(y)
+        left = int(x)
+        right = int(x + width)
+        bottom = int(y + height)
+        face_locations.append((top, right, bottom, left))
+    return face_locations
+
+
+def _face_crop_from_location(image_array, face_location, padding_ratio=0.12):
+    top, right, bottom, left = face_location
+    image_height, image_width = image_array.shape[:2]
+
+    face_width = max(right - left, 1)
+    face_height = max(bottom - top, 1)
+    pad_x = int(face_width * padding_ratio)
+    pad_y = int(face_height * padding_ratio)
+
+    crop_left = max(left - pad_x, 0)
+    crop_right = min(right + pad_x, image_width)
+    crop_top = max(top - pad_y, 0)
+    crop_bottom = min(bottom + pad_y, image_height)
+
+    face_crop = image_array[crop_top:crop_bottom, crop_left:crop_right]
+    return face_crop
+
+
+def _compute_face_signature(face_crop):
+    image = Image.fromarray(face_crop).convert('L')
+    image = ImageOps.autocontrast(image)
+    image = image.filter(ImageFilter.GaussianBlur(radius=1))
+
+    ahash_img = image.resize((8, 8), Image.Resampling.LANCZOS)
+    ahash_pixels = np.asarray(ahash_img, dtype=np.uint8)
+    ahash_bits = (ahash_pixels >= ahash_pixels.mean()).astype(np.uint8).flatten()
+    ahash_bytes = np.packbits(ahash_bits).tobytes()
+
+    dhash_img = image.resize((9, 8), Image.Resampling.LANCZOS)
+    dhash_pixels = np.asarray(dhash_img, dtype=np.uint8)
+    dhash_bits = (dhash_pixels[:, 1:] > dhash_pixels[:, :-1]).astype(np.uint8).flatten()
+    dhash_bytes = np.packbits(dhash_bits).tobytes()
+
+    return ahash_bytes + dhash_bytes
+
+
+def _validate_single_face_quality(image_array):
+    """Validate that exactly one clear, complete face is present in the image."""
+    if not FACE_RECOGNITION_AVAILABLE and not CV2_AVAILABLE:
+        return {
+            'ok': False,
+            'code': 'biometric_service_unavailable',
+            'message': 'Biometric face detection is currently unavailable on server.'
+        }
+
+    face_locations = _detect_single_face_location(image_array)
+    if face_locations is None:
+        return {
+            'ok': False,
+            'code': 'face_processing_error',
+            'message': 'Unable to process this image. Please capture a new photo.'
+        }
+
+    if not face_locations:
+        return {
+            'ok': False,
+            'code': 'no_face_detected',
+            'message': 'No face detected. Keep your full face in frame and try again.'
+        }
+
+    if len(face_locations) > 1:
+        return {
+            'ok': False,
+            'code': 'multiple_faces_detected',
+            'message': 'Multiple faces detected. Ensure only your face is visible.'
+        }
+
+    top, right, bottom, left = face_locations[0]
+    height, width = image_array.shape[:2]
+
+    face_width = max(right - left, 1)
+    face_height = max(bottom - top, 1)
+    face_area_ratio = (face_width * face_height) / float(max(width * height, 1))
+    if face_area_ratio < MIN_FACE_AREA_RATIO:
+        return {
+            'ok': False,
+            'code': 'face_too_small',
+            'message': 'Face is too far. Move closer so your face fills more of the frame.'
+        }
+
+    face_center_x = (left + right) / 2.0
+    face_center_y = (top + bottom) / 2.0
+    offset_x = abs(face_center_x - (width / 2.0)) / max(width / 2.0, 1.0)
+    offset_y = abs(face_center_y - (height / 2.0)) / max(height / 2.0, 1.0)
+    if max(offset_x, offset_y) > MAX_FACE_CENTER_OFFSET:
+        return {
+            'ok': False,
+            'code': 'face_not_centered',
+            'message': 'Center your face in the camera before continuing.'
+        }
+
+    face_crop = _face_crop_from_location(image_array, face_locations[0], padding_ratio=0.06)
+    if face_crop.size == 0:
+        return {
+            'ok': False,
+            'code': 'invalid_face_region',
+            'message': 'Face region could not be analyzed. Please retake the image.'
+        }
+
+    gray_face = np.asarray(Image.fromarray(face_crop).convert('L'), dtype=np.float32)
+    brightness = float(np.mean(gray_face))
+    if brightness < MIN_FACE_BRIGHTNESS:
+        return {
+            'ok': False,
+            'code': 'image_too_dark',
+            'message': 'Image is too dark. Improve lighting and try again.'
+        }
+    if brightness > MAX_FACE_BRIGHTNESS:
+        return {
+            'ok': False,
+            'code': 'image_too_bright',
+            'message': 'Image is too bright. Reduce glare or direct light and try again.'
+        }
+
+    grad_x = np.diff(gray_face, axis=1)
+    grad_y = np.diff(gray_face, axis=0)
+    sharpness_score = float(np.var(grad_x) + np.var(grad_y))
+    if sharpness_score < MIN_FACE_SHARPNESS_SCORE:
+        return {
+            'ok': False,
+            'code': 'image_too_blurry',
+            'message': 'Image is blurry. Hold still and capture a sharper photo.'
+        }
+
+    return {
+        'ok': True,
+        'code': 'ok',
+        'message': 'Face quality check passed.',
+        'face_location': face_locations[0],
+        'metrics': {
+            'face_area_ratio': round(face_area_ratio, 4),
+            'brightness': round(brightness, 2),
+            'sharpness_score': round(sharpness_score, 2),
+        }
+    }
+
+
+def _extract_face_encoding_for_location(image_array, face_location):
+    if not FACE_RECOGNITION_AVAILABLE:
+        return None
+    try:
+        encodings = face_recognition.face_encodings(image_array, known_face_locations=[face_location])
+        if encodings:
+            return encodings[0]
+    except Exception:
+        return None
+    return None
+
+
+def _compare_face_signature(signature_a, signature_b):
+    distance = _hamming_distance_bytes(signature_a, signature_b)
+    return distance <= FALLBACK_FACE_SIGNATURE_MAX_DISTANCE
 
 
 class AuthViewSet(viewsets.ViewSet):
@@ -304,22 +378,15 @@ class AuthViewSet(viewsets.ViewSet):
             user.failed_login_attempts = 0
             user.save()
             
-            log_audit_event(user, 'login_success', request)
-            
-            # Check if 3 failed attempts - trigger Phase 3 (biometric)
-            if user.failed_login_attempts >= 3:
-                return Response({
-                    'phase': 3,
-                    'message': 'Too many failed attempts. Biometric authentication required.',
-                    'requires_biometric': True
-                }, status=status.HTTP_200_OK)
-            
+            log_audit_event(user, 'login_attempt', request, {'phase': 'password_verified'})
+
             # Proceed to Phase 2 (OTP)
             return Response({
                 'phase': 2,
                 'message': 'Password verified. OTP required.',
                 'user_id': user.id,
-                'requires_otp': True
+                'requires_otp': True,
+                'biometric_enrolled': user.biometric_enrolled
             }, status=status.HTTP_200_OK)
         
         # Handle failed login
@@ -393,13 +460,18 @@ class AuthViewSet(viewsets.ViewSet):
         serializer = OTPVerifySerializer(data=request.data, context={'user': user})
         if serializer.is_valid():
             log_audit_event(user, 'otp_verified', request)
-            
-            # Generate JWT token
-            token = generate_jwt_token(user)
-            
+
+            challenge_token = _generate_jwt_token(
+                user,
+                token_use='biometric_challenge',
+                expires_in_seconds=BIOMETRIC_CHALLENGE_TOKEN_EXPIRATION_SECONDS,
+            )
+
             return Response({
-                'message': 'OTP verified successfully',
-                'token': token,
+                'message': 'OTP verified successfully. Complete face capture to finish login.',
+                'challenge_token': challenge_token,
+                'biometric_enrolled': user.biometric_enrolled,
+                'next_step': 'verify_biometric' if user.biometric_enrolled else 'enroll_biometric',
                 'user': UserSerializer(user).data
             }, status=status.HTTP_200_OK)
         
@@ -439,10 +511,17 @@ class AuthViewSet(viewsets.ViewSet):
         Returns: JWT token if verified, error message if verification fails
         """
         user_id = request.data.get('user_id')
+        challenge_payload, challenge_error = _get_biometric_challenge_payload(request)
+        if challenge_error:
+            return challenge_error
+
         try:
-            user = User.objects.get(pk=user_id)
+            user = User.objects.get(pk=challenge_payload['user_id'])
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user_id and str(user_id) != str(user.id):
+            return Response({'error': 'Biometric session does not match this user.'}, status=status.HTTP_403_FORBIDDEN)
         
         if not user.biometric_enrolled:
             return Response({'error': 'Biometric not enrolled'}, status=status.HTTP_400_BAD_REQUEST)
@@ -453,22 +532,37 @@ class AuthViewSet(viewsets.ViewSet):
             image_data = request.data.get('image_data')
             try:
                 image_bytes, image_array = _image_data_to_rgb_array(image_data)
+                quality_check = _validate_single_face_quality(image_array)
+                if not quality_check['ok']:
+                    return Response(
+                        {
+                            'error': quality_check['message'],
+                            'error_code': quality_check['code']
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                face_location = quality_check['face_location']
+                current_face_crop = _face_crop_from_location(image_array, face_location)
+                current_signature = _compute_face_signature(current_face_crop)
+                mirrored_face_crop = np.flip(current_face_crop, axis=1)
+                mirrored_signature = _compute_face_signature(mirrored_face_crop)
+                current_encoding = _extract_face_encoding_for_location(image_array, face_location)
                 
                 # Load stored embedding and compare
                 stored_image_bytes = _to_bytes(user.biometric_embedding)
-
-                # Always require visible face in frame, regardless of storage mode.
-                is_valid, validation_error, _ = _validate_face_capture(image_array, require_face_checks=True)
-                if not is_valid:
-                    return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
-
-                current_encoding = _extract_face_encoding(image_array)
 
                 is_match = False
 
                 if stored_image_bytes.startswith(EMBEDDING_PREFIX):
                     if current_encoding is None:
-                        return Response({'error': 'Face encoding failed. Ensure your face is clearly visible and retake.'}, status=status.HTTP_400_BAD_REQUEST)
+                        return Response(
+                            {
+                                'error': 'Advanced face matching is unavailable for this enrolled profile. Please re-enroll biometric.',
+                                'error_code': 're_enroll_required'
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                     stored_encoding_bytes = stored_image_bytes[len(EMBEDDING_PREFIX):]
                     stored_encoding = np.frombuffer(stored_encoding_bytes, dtype=np.float64)
@@ -480,35 +574,49 @@ class AuthViewSet(viewsets.ViewSet):
 
                 elif stored_image_bytes.startswith(IMAGE_PREFIX):
                     stored_hash = stored_image_bytes[len(IMAGE_PREFIX):]
-                    current_hash = _compute_image_hash_from_bytes(image_bytes)
-                    hash_distance = _hamming_distance_bytes(stored_hash, current_hash)
-                    is_match = hash_distance <= 22  # Increased from 18 for more leniency
+                    hash_distance = _hamming_distance_bytes(stored_hash, current_signature[:len(stored_hash)])
+                    is_match = hash_distance <= 18
 
                 elif stored_image_bytes.startswith(IMAGE_PREFIX_V2):
                     stored_signature = stored_image_bytes[len(IMAGE_PREFIX_V2):]
-                    current_signature = _compute_image_signature_v2(image_bytes)
-                    signature_distance = _hamming_distance_bytes(stored_signature, current_signature)
-                    is_match = signature_distance <= 40  # Increased from 34 for more leniency
+                    is_match = (
+                        _compare_face_signature(stored_signature, current_signature)
+                        or _compare_face_signature(stored_signature, mirrored_signature)
+                    )
 
                 else:
                     stored_image_array = _bytes_to_rgb_array(stored_image_bytes)
-                    stored_encoding = _extract_face_encoding(stored_image_array)
+                    stored_quality_check = _validate_single_face_quality(stored_image_array)
+                    stored_encoding = None
+                    stored_signature = None
+                    if stored_quality_check['ok']:
+                        stored_face_crop = _face_crop_from_location(stored_image_array, stored_quality_check['face_location'])
+                        stored_signature = _compute_face_signature(stored_face_crop)
+                        stored_encoding = _extract_face_encoding_for_location(
+                            stored_image_array,
+                            stored_quality_check['face_location']
+                        )
 
                     if current_encoding is not None and stored_encoding is not None:
                         distance = np.linalg.norm(stored_encoding - current_encoding)
                         is_match = distance <= settings.FACE_RECOGNITION_TOLERANCE
-                    else:
-                        stored_hash = _compute_image_hash_from_bytes(stored_image_bytes)
-                        current_hash = _compute_image_hash_from_bytes(image_bytes)
-                        hash_distance = _hamming_distance_bytes(stored_hash, current_hash)
-                        is_match = hash_distance <= 18
+                    elif stored_signature is not None:
+                        is_match = (
+                            _compare_face_signature(stored_signature, current_signature)
+                            or _compare_face_signature(stored_signature, mirrored_signature)
+                        )
 
                 if is_match:
                     log_audit_event(user, 'biometric_used', request)
                     user.unlock_account()
+
+                    if not stored_image_bytes.startswith(EMBEDDING_PREFIX):
+                        user.biometric_embedding = EMBEDDING_PREFIX + np.asarray(current_encoding, dtype=np.float64).tobytes()
+                        user.save(update_fields=['biometric_embedding', 'failed_login_attempts', 'account_locked_until', 'updated_at'])
                     
                     # Generate JWT token
-                    token = generate_jwt_token(user)
+                    token = _generate_jwt_token(user)
+                    log_audit_event(user, 'login_success', request, {'method': 'biometric_verification'})
                     
                     return Response({
                         'message': 'Biometric verified successfully',
@@ -526,7 +634,7 @@ class AuthViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['post'])
     def enroll_biometric(self, request):
         """
         Enroll biometric data (FIRST TIME ONLY)
@@ -538,41 +646,168 @@ class AuthViewSet(viewsets.ViewSet):
         
         Returns: Success message when face is saved
         """
-        user = request.user
+        challenge_payload, challenge_error = _get_biometric_challenge_payload(request)
+        if challenge_error:
+            return challenge_error
+
+        try:
+            user = User.objects.get(pk=challenge_payload['user_id'])
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.data.get('user_id') and str(request.data.get('user_id')) != str(user.id):
+            return Response({'error': 'Biometric session does not match this user.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.biometric_enrolled:
+            return Response(
+                {
+                    'error': 'Biometric profile already exists. Use face verification instead.',
+                    'error_code': 'biometric_already_enrolled'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         image_data = request.data.get('image_data')
         
         try:
             image_bytes, image_array = _image_data_to_rgb_array(image_data)
-            is_valid, validation_error, _ = _validate_face_capture(image_array, require_face_checks=True)
-            if not is_valid:
-                return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+            quality_check = _validate_single_face_quality(image_array)
+            if not quality_check['ok']:
+                return Response(
+                    {
+                        'error': quality_check['message'],
+                        'error_code': quality_check['code']
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            face_encoding = _extract_face_encoding(image_array)
-
+            face_location = quality_check['face_location']
+            face_encoding = _extract_face_encoding_for_location(image_array, face_location)
             if face_encoding is not None:
                 user.biometric_embedding = EMBEDDING_PREFIX + np.asarray(face_encoding, dtype=np.float64).tobytes()
             else:
-                # Safe fallback mode when facial encoding is not available.
-                fallback_signature = _compute_image_signature_v2(image_bytes)
+                face_crop = _face_crop_from_location(image_array, face_location)
+                fallback_signature = _compute_face_signature(face_crop)
                 user.biometric_embedding = IMAGE_PREFIX_V2 + fallback_signature
 
             user.biometric_enrolled = True
             user.save()
+
+            token = _generate_jwt_token(user)
+            log_audit_event(user, 'biometric_used', request)
+            log_audit_event(user, 'login_success', request, {'method': 'biometric_enrollment'})
             
-            return Response({'message': 'Biometric enrolled successfully'}, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'Biometric enrolled successfully. Login complete.',
+                'token': token,
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
         
         except Exception as e:
             import traceback
             traceback.print_exc()
             return Response({'error': f'Enrollment error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['get'])
+    def biometric_overview(self, request):
+        """Admin overview of biometric enrollment status."""
+        if not getattr(request.user, 'is_authenticated', False):
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
 
-def generate_jwt_token(user):
+        if getattr(request.user, 'role', None) not in {'admin', 'staff'}:
+            return Response({'error': 'Insufficient permissions'}, status=status.HTTP_403_FORBIDDEN)
+
+        total_users = User.objects.count()
+        enrolled_users = User.objects.filter(biometric_enrolled=True).count()
+        pending_users = User.objects.filter(biometric_enrolled=False).count()
+        locked_users = User.objects.filter(account_locked_until__gt=timezone.now()).count()
+
+        users = User.objects.order_by('username').values(
+            'id',
+            'username',
+            'email',
+            'role',
+            'biometric_enrolled',
+            'failed_login_attempts',
+            'account_locked_until',
+            'is_active',
+        )[:25]
+
+        return Response(
+            {
+                'summary': {
+                    'total_users': total_users,
+                    'enrolled_users': enrolled_users,
+                    'pending_users': pending_users,
+                    'locked_users': locked_users,
+                },
+                'users': list(users),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+def _get_biometric_challenge_payload(request):
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    token = request.data.get('challenge_token')
+
+    if auth_header.startswith('Bearer '):
+        token = auth_header.split(' ', 1)[1].strip()
+
+    if not token:
+        return None, Response(
+            {
+                'error': 'Biometric challenge token is required.',
+                'error_code': 'missing_biometric_challenge'
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+    except jwt.ExpiredSignatureError:
+        return None, Response(
+            {
+                'error': 'Biometric challenge expired. Please sign in again.',
+                'error_code': 'biometric_challenge_expired'
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    except jwt.InvalidTokenError:
+        return None, Response(
+            {
+                'error': 'Invalid biometric challenge token.',
+                'error_code': 'invalid_biometric_challenge'
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if payload.get('token_use') != 'biometric_challenge':
+        return None, Response(
+            {
+                'error': 'Invalid biometric challenge token.',
+                'error_code': 'invalid_biometric_challenge'
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    return payload, None
+
+
+def _generate_jwt_token(user, token_use='access', expires_in_seconds=None, extra_claims=None):
     """Generate JWT token for user"""
+    expiration_seconds = expires_in_seconds or settings.JWT_EXPIRATION_DELTA
     payload = {
         'user_id': user.id,
         'username': user.username,
-        'exp': datetime.utcnow() + timedelta(seconds=settings.JWT_EXPIRATION_DELTA),
+        'token_use': token_use,
+        'exp': datetime.utcnow() + timedelta(seconds=expiration_seconds),
         'iat': datetime.utcnow()
     }
+    if extra_claims:
+        payload.update(extra_claims)
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)

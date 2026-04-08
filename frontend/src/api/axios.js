@@ -10,10 +10,21 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    const requestUrl = config.url || ''
+    const isAuthRoute = requestUrl.includes('/auth/')
     const token = localStorage.getItem('token')
-    if (token) {
+    const hasExplicitAuthHeader = Boolean(config.headers?.Authorization)
+
+    // Keep caller-provided Authorization headers (needed for biometric enrollment)
+    if (hasExplicitAuthHeader) {
+      return config
+    }
+
+    // Auto-attach token only for non-auth endpoints to avoid stale-token 403 on login
+    if (token && !isAuthRoute) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
     return config
   },
   (error) => {
