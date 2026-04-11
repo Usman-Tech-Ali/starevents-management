@@ -1,0 +1,191 @@
+University of the West of Scotland
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters Project Specification
+
+Student's Name: Muhammad Shamail Tariq
+Banner id: B01822123
+MSc Programme: MSc Information Technology (COMP11117)
+MSc Programme Leader: Bikrant Koirala	
+
+Project Title 										(5 Marks)
+
+Digital Transformation of StarEvents Management: A Web-Based Event Management System with Advanced Security and Authentication
+Abstract 
+(Project overview reflecting the larger scope of the project.)			 		(10 Marks)
+This group project addresses the digital transformation of StarEvents Management, a fictional small business operating in the event planning sector. Small and medium-sized enterprises (SMEs) in the events industry face mounting pressure to adopt digital technologies in order to remain competitive, improve operational efficiency, and enhance client experiences. Although digital tools are so widely available, most of the SMEs do not have the technical knowledge, planned strategies, and finances to make proper use of them.
+The project is a project with a detailed web-based Digital Transformation Project Plan, developed with the help of React.js in the front-end and Python (Django) in the back-end. The system includes event management platform, inventory tracking, reporting modules and critical three phase security architecture to help in user authentication. The three stage authentication system includes password validation, One-Time Password (OTP) delivery through SMS or email, and facial recognition biometrics, which is a sound, layered method of identity verification appropriate in a digitally transforming SME.
+This individual contribution, led by Muhammad Shamail Tariq, focuses specifically on the design, implementation, and testing of the security and authentication subsystem. The project employs a Design Science Research methodology, combining iterative prototyping, functional testing, and usability evaluation. Ethical considerations include data privacy compliance (GDPR), secure storage of biometric data, and informed user consent. The expected outcome is a secure, scalable, and maintainable authentication module that seamlessly integrates with the group's broader Digital Transformation platform.
+
+
+Justification and overall Aim 								(10 Marks)
+(Rationale for the research showing gaps in the current knowledge and general statements on intent and direction of the project*) 
+
+The issue of digital transformation in small businesses is a major challenge all over the world. According to the findings of research conducted by OECD (2021), it is observed that SMEs always face disadvantages in comparison with larger businesses in terms of adopting technologies because of resource limitations, low IT literacy, and lack of clear implementation plans. In the events management industry, in particular, the majority of small enterprises still use manual systems, i.e. spreadsheets, telephone reservations, and paper-based inventories, which causes the inefficiencies, lack of clarity in data and inability to access some revenue opportunities.
+More importantly, the current frameworks of the digital transformation have been tailored to large businesses virtually exclusively and lack considerations of the constraints faced by SMEs, including limited IT budgets, the non-technical usability, and the time-based adoption schedule (Kahveci, 2025; Taylor and Francis, 2024). Besides, as much literature covering obstacles to SME digital uptake exists, a glaring gap in literature coverage is the lack of artefact-based research results that illustrate practical end-to-end solutions to particular SME applications (Hassan et al., 2024).
+One of the least studied aspects is cyberspace security and access protection to SME web platforms. Most small businesses that digitise their operations implement web applications without a strong authentication mechanism making them susceptible to data breaches, credential theft, and fraudulent access (ENISA, 2023). The increasing complexities of cyber threats such as phishing, credential stuffing, and session hijacking impose the necessity to implement a multi-layered authentication system instead of a mere password protection. Multi-factor authentication (MFA) with biometric integration is becoming a new standard of security, however, little is written in practice literature on its application in the SME setting (NIST, 2022; Bonneau et al., 2012).
+ 
+The entire goal of this personal project is to develop, test, and design a secure three-stage authentication system as the security infrastructure of the web-based Event Management System of StarEvents Management. This is comprised of a strong login process that integrates password, OTP-based two-factor authentication, and facial recognition biometric authentication. The objective is to show that security practices at the enterprise level can be feasibly applied in an SME environment as part of a fifteen-week development process.
+
+
+
+
+
+
+
+
+Objectives										 (10 Marks)
+(List of tasks to be undertaken to achieve overall aim of the project* and to answer the research question posed)
+The contribution of this individual is guided by the following specific, measurable and sequenced objectives:
+• Survey and analysis of literature on authentication systems, multi-factor authentication (MFA), and biometric security systems used in web-based applications in SMEs (Weeks 1-3).
+• Analyse the security needs of the StarEvents Management system, vulnerabilities, user roles (Admin/Staff/Client), and entry points of authentication in the web platform in general (Weeks 2 -4).
+• Design 3-step authentication architecture, system flow diagram, data flow diagram of the login subsystem, and the database schema of user credential storage (Weeks 4-6).
+• Phase 1: Implement the login system Phase 1: Secure password authentication with Django included authentication system (hashed passwords (bcrypt/PBKDF2)) and CSRF protection and session management (Weeks 6-8).
+• Phase 2: Two-Factor Authentication (2FA) with OTPs and Python (Twilio SMS API or SMTP email), OTP generation, OTP expiry, and resend feature (Weeks 7-9).
+• Phase 3: Face recognition log-in with a Python face recognition library (e.g., face recognizing or Deep Face) with a React.js camera component, enabled after the third unsuccessful attempt to log-in (Weeks 9-11).
+• Perform unit, integration and edge-case tests on all three authentication stages (e.g. expired OTPs, unknown faces, brute force wizards) (Weeks 11-13).
+• Test the security module by comparing it with the GDPR compliance requirements, biometric data must be stored in an encrypted environment, consent mechanisms, and data minimisation principles should be documented, and security module should be evaluated against the requirements of the GDPR (Weeks 13 -14).
+• Prepare final document of security module, interface with the group system and prepare individual contribution sections of the project specification (Week 15)
+
+
+Review of Literature 									(20 Marks)
+(An account of the current thinking/published information in the specific area of project*) 
+ Digital SMEs Transformation.
+The academic literature on the topic of digital transformation (DT) among small and medium-sized businesses has increased significantly since 2020, and the COVID-19 pandemic stimulated the shift towards the use of online resources and digital procedures by industry companies. The following systematic reviews always indicate financial barriers, lack of digital skills, and resistance to change as the most significant factors that do not allow SMEs to successfully undergo digital transformation (OECD, 2021; Kahveci, 2025). Although, there are affordable solutions in cloud systems, e-commerce solutions, and automation software, most of the small companies do not have an effective implementation strategy, and they still use the old, manual systems that limit their productivity and competitiveness.
+Hassan et al. (2024) use empirical analysis to prove that digital diffusion is positively associated with the performance of SME innovation, but say that the benefits are not equally distributed, with larger SMEs and those in technology-related industries receiving a disproportionately higher benefit. This observation supports the idea that micro and small businesses have to have specially designed digital transformation frameworks, especially in the service industries like event management.
+ Web Application security and authentication.
+Security has been one of the greatest concerns of digitally transforming SMEs. When small businesses switch their services to the internet, they are susceptible to various forms of cybersecurity attacks such as phishing, credential stuffing, SQL Injection, and cross-site request forgery (CSRF). According to the European Union Agency for Cybersecurity (ENISA, 2023), the number of SMEs is an excessively large percentage of victims of cybersecurity incidents, which is mainly explained by the lack of investment in security infrastructure and lack of awareness of the threat landscape.
+Although universal, password-based authentication has been generally admittedly inadequate as a security measure unto itself. The key comparative analysis concerning authentication mechanisms was carried out by Bonneau et al. (2012) who found out that passwords are hopeless in many dimensions of usability or security, and that multi-factor authentication (MFA) is the inevitable development. The MFA is formally recommended by the National Institute of Standards and Technology (NIST, 2022) Special Publication 800-63B as any authentication system with sensitive user data must implement, but it offers guidelines based on the knowledge-based (using passwords), possession-based (OTP tokens), and inherence-based (biometrics) factors.
+Two-Factor Authentication (2FA) and OTP Systems.
+The most commonly used two-factor authentication in a web-based application is the One-Time Password (OTP) systems. Aloul et al. (2009) have given an introductory overview of the concept of two-factor authentication in network security by showing that OTP-driven 2FA would significantly minimize the threat of an account takeover even in cases where the primary credentials are stolen. Modern applications typically send the OTPs through SMS (Short Message Service) or email and employ time-based OTP (TOTP) algorithms like those defined in RFC 6238 (M'Raihi et al., 2011).
+Nevertheless, OTP delivery through SMS has been questioned because of reported attacks such as SIM-swapping and the use of SS7 protocol (Enck et al., 2014). The best practice would suggest such a hybrid approach where SMS and email OTP delivery is provided and biometric fallback is provided in high security situations - the very architecture proposed in this individual contribution.
+ Biometric Authentication and Face Recognition.
+The concept of facial recognition as an authentication tool has received great momentum on the consumer and enterprise levels. Jain, Ross and Pankanti (2006) have conducted an excellent survey of the biometric authentication systems and have suggested facial recognition as a good system since it is non-invasive, low-cost hardware (a webcam) and the user acceptance of this method is relatively high. Later deep learning-based systems, including those based on convolutional neural network (CNN) systems, have significantly enhanced recognition accuracy and sensitivity to light/pose changes (Schroff, Kalenichenko and Philbin, 2015).
+In the case of web-based applications, Python packages like face recognition (libraries based on dlib) and DeepFace have available APIs capable of performing facial recognition without the need of specialised software. A combination of them with React.js camera elements (through the WebRTC API) can be a technologically viable solution to the web-based application of SME grade. Most importantly, implementation of biometric systems has to be carried out in line with the data protection law; according to the General Data Protection Regulation (GDPR), biometric data should be considered a special category of personal data, which needs a clear consent, restriction of purposes and confidential encrypted storage (European Parliament, 2016).
+ Synthesis and Research Gap
+All literature sources indicate that: (i) passage barriers to digital transformation are severe in SMEs, and requires custom, practical solutions; (ii) password-based authentication is no longer adequate in the context of web-based systems; (iii) MFA based on OTP and biometrics is a viable, standards-conformant security posture; and (iv) facial recognition integration in web-based SME platforms, although feasible in theory, has not been fully covered in practice literature. This personal contribution fills this gap, advancing one of the stages of a three-phase authentication system design, implementation, and evaluation into the framework of a real-world SME digital transformation undertaking, adding an artefact-based case study to a highly descriptive literature.
+Methodology										(25 Marks)
+(Explanation and justification of approach and methodology proposed for the project*. This section should explain the nature of the data and method of data collection. Identification and brief discussion of any analytical tools to be used; Identification of any ethical and practical issues.)
+The study will take a qualitative approach where the independent variable is an online gaming platform, and the dependent variable is attendance at the virtual event (interviews and surveys).
+The current individual contribution follows a Design Science Research (DSR) methodology, formalised by Hevner et al. (2004), as is broadly considered suitable in the context of the Information Systems research that entails the development and testing of technical artefacts. DSR consists of three cycles, including the Relevance Cycle (contextualizing the problem based on real-world conditions), the Rigor Cycle (theoretical and empirical knowledge application), and the Design Cycle (build-visit-refine). This method fits the current work particularly well due to the fact that it requires the application of artefacts (the authentication system) in practice and their thorough analysis in accordance with the defined standards to meet the MSc requirement regarding primary research (involving practical computing/IT work).
+System Architecture and Technology Stack.
+Security module will be built as a sub system based on RESTful API and implemented in the Django (Python) backend and React.js frontend of the group. The entire technology stack is illustrated in Fig 1 (below). The frontend will send authentication endpoints to Axios HTTP requests and store session tokens (JWT - JSON Web Tokens) on React state. Credential validation, OTP generation and delivery, and facial recognition processing will be done through a backend. PostgreSQL will be used as the main database, which will store hashed credentials, OTP logs (with expiration dates), and encrypted biometric embeddings.
+
+
+Fig 1: System Technology Stack Chart - Language, Purpose, and Platform Overview
+
+ Three-Phase Authentication Design.
+The authentication process is planned as a three-phase, stateful and sequential process depicted in the flow diagram below in Fig 2 (refer below). The three phases are:
+Phase 1 - Password Authentication: The user provides credentials in a React.js form. The Django backend has been tested with PBKDF2-hashed passwords (the default hashing algorithm of Django), and all POST requests have protection by CSRF tokens. The database has been configured to have a fail counter; three consecutive failures result in account lockout and notification to the admins.
+Phase 2- OTP Two-Factor Authentication: When a successful password validation is performed, a 6-digit OTP will be cryptographically-randomized with the secrets module in Python, and sent either through Twilio SMS API (primary) or SMTP email (secondary). OTP is saved as a hash value with an expiry period of 10 minutes. React frontend displays an OTP input form; any wrong or expired OTPs will show an option of resend.
+Phase 3 is activated when the user has been unsuccessful in Phase 1 authentication three times in total (over a session). The React frontend will connect to the webcam of a device through the WebRTC API and take a face picture. This is sent to the Django backend and face_recognition Python library is used to compare the live image to the stored user account face embedding. The confidence level of 0.6 (Euclidean distance) is used. One is allowed in by successful recognition, and locked out by failure.
+
+Fig 2: System Login and Authentication Flowchart - Three-Phase Security Process
+ Data Collection and Character of Primary Research.
+In this contribution, primary research will be in the form of artefact development and evaluation. Functional and security testing will involve gathering system-level data, such as: rates of success/failures of logins at each stage of the authentication process, OTP delivery time, accuracy of facial recognition (true positive, false acceptance rate), and response time to system under simulated load. Data on user experience will be gathered by using a structured usability questionnaire to five proxy users (fellow students as testers), where the usability questionnaire is evaluated with respect to the three-phase flow of logging into the system in comparison to the ten heuristics of usability used by Nielsen (Nielsen, 1994).
+ Analytical Tools, Frameworks and techniques.
+•	Django REST Framework (DRF): REST API development and endpoint authentication.
+•	PyJWT: JSON Web Token creation and verification of session management.
+•	Twilio python SDK: SMS OTP delivery.
+• face recognition (dlib): Facial embedding extraction and matching.
+•	React.js and react-webcam: Frontend camera integration with facial capture.
+•	PostgreSQL and Django ORM: Database and migration.
+•	Pytest and Django TestCase: Unit and integration test of authentication logic.
+•	OWASP ZAP (Zed Attack Proxy): Simple scanning of the login points with vulnerabilities.
+ Practical and Ethical Concerns.
+Biometric data (facial embeddings) are considered as special category personal data according to GDPR (Article 9). The system will introduce: explicit informed consent procedures prior to biometric enrolment; the facial embeddings are not represented by raw images, but in encrypted binary form (AES-256); purpose limitation - biometric data is used when authenticating only; and data minimisation - no superfluous personal data is acquired. Only synthetic or consented participant data are going to be used in all testing. Ethical approval would be obtained through the UWS Ethics Review Manager before any human subject user testing could take place. Risk has been minimized in the project since no real user data will be engaged in the development; proxy operation is going to be conducted with informed and consenting people.
+
+
+
+
+Work Plan 										(10 Marks)
+(A timetable for completion of the project*. MSc Masters Project full-time is allowed 15 weeks and part-time is 30 weeks. You may use any appropriate method to present the well-thought-through plan of action reflecting your project* activities)
+The following Gantt chart (Fig 3) presents the 15-week project timeline for this contribution, aligned with the group's overall schedule
+
+Fig 3: Project Gantt Chart - 15-Week Timeline for Security Module Development
+WeekKey ActivitiesDeliverableEffort (hrs)Notes / Risk1-3Literature review: authentication, MFA, facial recognition, GDPR; project setupAnnotated bibliography; research summary40/wkRisk: sourcing peer-reviewed biometric papers2-4Requirements analysis; user role mapping; security threat modellingSecurity requirements document; threat model40/wkCoordinate with group on user roles4-6System architecture design; DB schema; authentication flow diagramsArchitecture diagram; DB schema; Fig 2 flowchart40/wkSupervisor sign-off on architecture6-8Phase 1 implementation: Django auth, PBKDF2 hashing, CSRF, session managementWorking password login; unit tests40/wkRisk: JWT integration complexity7-9Phase 2 implementation: OTP generation, Twilio SMS, SMTP email, expiry logicOTP login flow; integration tests40/wkTwilio trial account limitations9-11Phase 3 implementation: face_recognition library, React webcam, biometric flowFacial recognition login; embedded tests40/wkRisk: library accuracy; fallback to DeepFace11-13Functional & security testing; OWASP ZAP scan; usability evaluation with proxy usersTest report; vulnerability scan results40/wkArrange 5 proxy testers13-14GDPR compliance audit; ethics documentation; performance optimisationEthics report; GDPR checklist35/wkEthics approval must be in place14-15Final specification write-up; integration with group system; supervisor reviewCompleted specification document30/wkBuffer for revisions
+
+
+
+
+
+
+
+
+References
+(Correctly presented in Cite Them Right Harvard style)					(10 Marks)
+• Aloul, F., Zahidi, S. and El-Hajj, W. (2009) 'Two factor authentication using mobile phones', in IEEE/ACS International Conference on Computer Systems and Applications, pp. 641-644. https://doi.org/10.1109/AICCSA.2009.5069395
+• Bonneau, J., Herley, C., Van Oorschot, P.C. and Stajano, F. (2012) 'The quest to replace passwords: A framework for comparative evaluation of web authentication schemes', in 2012 IEEE Symposium on Security and Privacy, pp. 553-567. https://doi.org/10.1109/SP.2012.44
+• Enck, W., Traynor, P., McDaniel, P. and La Porta, T. (2014) 'Exploiting open functionality in SMS-capable cellular networks', in Proceedings of the 12th ACM Conference on Computer and Communications Security, pp. 393-404. https://dl.acm.org/doi/10.1145/1102120.1102161
+• ENISA (European Union Agency for Cybersecurity) (2023) ENISA threat landscape 2023. Heraklion: ENISA. Available at: https://www.enisa.europa.eu/publications/enisa-threat-landscape-2023 (Accessed: 10 February 2026).
+• European Parliament (2016) Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data (General Data Protection Regulation). Official Journal of the European Union, L 119/1. Available at: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32016R0679 (Accessed: 10 February 2026).
+• Hassan, S.S., Adefila, A. and Bello, M. (2024) 'Is digitalization a source of innovation? Exploring the role of digital diffusion in SME innovation performance', Small Business Economics, 62(4), pp. 1469-1491. https://doi.org/10.1007/s11187-023-00826-7
+• Hevner, A.R., March, S.T., Park, J. and Ram, S. (2004) 'Design science in information systems research', MIS Quarterly, 28(1), pp. 75-105. https://doi.org/10.2307/25148625
+• Jain, A.K., Ross, A. and Pankanti, S. (2006) 'Biometrics: A tool for information security', IEEE Transactions on Information Forensics and Security, 1(2), pp. 125-143. https://doi.org/10.1109/TIFS.2006.873653
+• M'Raihi, D., Machani, S., Pei, M. and Rydell, J. (2011) TOTP: Time-based One-Time Password algorithm. IETF RFC 6238. Available at: https://tools.ietf.org/html/rfc6238 (Accessed: 10 February 2026).
+• Nielsen, J. (1994) 'Enhancing the explanatory power of usability heuristics', in Proceedings of the SIGCHI Conference on Human Factors in Computing Systems, pp. 152-158. https://doi.org/10.1145/191666.191729
+• NIST (National Institute of Standards and Technology) (2022) Digital identity guidelines: Authentication and lifecycle management. NIST Special Publication 800-63B. Gaithersburg: NIST. https://doi.org/10.6028/NIST.SP.800-63b
+• OECD (2021) The digital transformation of SMEs. OECD Studies on SMEs and Entrepreneurship. Paris: OECD Publishing. https://doi.org/10.1787/bdb9256a-en
+• Schroff, F., Kalenichenko, D. and Philbin, J. (2015) 'FaceNet: A unified embedding for face recognition and clustering', in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 815-823. https://doi.org/10.1109/CVPR.2015.7298682
+• Taylor and Francis (2024) 'Digital transformation and innovation in small and medium enterprises (SMEs): a systematic review and future research agenda', Cogent Business and Management, 11(1). https://www.tandfonline.com/toc/oabm20/current
+
+
+
+
+
+
+
+*Individual contribution for group project
+
+Marking scheme
+(Marking scheme for final report/dissertation. Note: For group project, each student in a team must submit their own sections for- Presentation of results, Conclusions and Critical Self-Evaluation)
+
+Introduction5Literature Review15Research Design15Implementation25Testing10Presentation of Results10Conclusions10Critical Self-Evaluation10Total100
+Supervisor
+Ahren Hart
+Moderator
+Haider Ali
+Programme Leader
+Md Masum Rana
+Date specification submitted
+
+Please complete the 'ethics' & pathway confirmation form below for all projects.
+
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters PROJECT - REQUIREMENT FOR ETHICAL APPROVAL & PATHWAY CONFIRMATION
+
+SECTION 1: TO BE COMPLETED BY THE STUDENT(S)
+Does your proposed research involve: research with human subjects (including requirements gathering and product/software testing), access to company documents/records, questionnaires, surveys, focus groups and/or other interview techniques? Does your research entail any process which requires ethical approval? (please enter v in the appropriate box)
+
+YESYou must submit an application for approval to the Ethics Review ManagerNOYou do not need to submit an application to the Ethics Review Manager
+
+I confirm that the above project specification aligns with my MSc programme specialist pathway. (please enter v in the box)
+Name of student (print name): Shamail Tariq
+
+Signature: Shamail Tariq
+
+
+
+
+SECTION 2: TO BE COMPLETED BY THE PROJECT SUPERVISOR
+I understand that the above project requires/does not require* ethical approval (*please delete as appropriate).
+       I confirm that the above project aligns with the MSc programme specialist pathway the
+        Student(s) is (are) enrolled in. (please enter v in the box)
+
+Supervisor (print name): 
+
+Signature:
+
+Date:
+
+IMPORTANT: please note that by signing this form all signatories are confirming that any potential ethical issues have been considered and, where necessary, an application for ethical approval has been/will be made via the Ethical Review Manager software.  
+Any project requiring ethical approval but which has not been given approval will not be accepted for marking. 
+Ethical approval cannot be sought in retrospect.
+
+
+MSc Masters Project specification2025/26
+
+2
+
+

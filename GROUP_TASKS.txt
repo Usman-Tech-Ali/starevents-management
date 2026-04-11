@@ -1,0 +1,163 @@
+================================================================================
+STAREVENTS MANAGEMENT - GROUP TASK ASSIGNMENT & CODEBASE MAPPING
+================================================================================
+
+--------------------------------------------------------------------------------
+1. MUHAMMAD SHAMAIL TARIQ (B01822123)
+   Module: Security & Authentication
+--------------------------------------------------------------------------------
+
+TASKS:
+  - 3-Phase login system (Password → OTP → Face Recognition)
+  - JWT token generation and session management
+  - Account lockout after failed attempts
+  - Audit logging for security events
+  - GDPR-compliant biometric data storage
+
+IMPLEMENTED IN:
+  Backend:
+    backend/authentication/models.py        → User, OTPToken, AuditLog models
+    backend/authentication/views.py         → AuthViewSet (login_phase1, request_otp,
+                                              verify_otp, verify_biometric, enroll_biometric)
+    backend/authentication/serializers.py   → LoginSerializer, OTPRequestSerializer,
+                                              OTPVerifySerializer, FacialRecognitionSerializer
+    backend/authentication/backends.py      → JWTAuthentication backend
+    backend/authentication/utils.py         → OTP delivery (email/SMS via Twilio)
+    backend/authentication/urls.py          → Auth API routes
+    backend/authentication/migrations/      → Database migrations
+
+  Frontend:
+    frontend/src/pages/Login.jsx            → 3-phase login UI (password, OTP, webcam)
+    frontend/src/contexts/AuthContext.jsx   → Auth state management
+    frontend/src/components/PrivateRoute.jsx → Protected route wrapper
+    frontend/src/pages/BiometricEnroll.jsx  → Biometric enrollment page
+
+--------------------------------------------------------------------------------
+2. MUHAMMAD MOHSIN KHAN (B01819889)
+   Module: Event Management & Booking
+--------------------------------------------------------------------------------
+
+TASKS:
+  - Event CRUD (create, read, update, delete)
+  - Client booking workflow with capacity checking
+  - Waitlist management
+  - Booking confirmation and cancellation
+  - Email notifications for booking events
+
+IMPLEMENTED IN:
+  Backend:
+    backend/events/models.py                → Event, Booking, Notification models
+    backend/events/views.py                 → EventViewSet, BookingViewSet,
+                                              NotificationViewSet
+    backend/events/serializers.py           → EventSerializer, BookingSerializer,
+                                              NotificationSerializer
+    backend/events/utils.py                 → send_booking_confirmation_email
+    backend/events/urls.py                  → Events API routes
+    backend/events/migrations/              → Database migrations
+
+  Frontend:
+    frontend/src/pages/Events.jsx           → Event listing, create, edit, delete UI
+    frontend/src/pages/Bookings.jsx         → Booking management UI (create, confirm,
+                                              cancel, filter, search)
+
+  NOTE: FullCalendar calendar view not yet implemented in frontend.
+
+--------------------------------------------------------------------------------
+3. MD MASUM RANA (B01819535)
+   Module: Inventory Management & Reporting
+--------------------------------------------------------------------------------
+
+TASKS:
+  - Inventory item CRUD with SKU, categories, stock levels
+  - Stock transaction audit trail (in/out/adjustment/return/damaged)
+  - Low stock threshold alerts with email notifications
+  - PDF report generation (ReportLab)
+  - Excel report generation (openpyxl)
+  - React inventory dashboard with charts
+
+IMPLEMENTED IN:
+  Backend:
+    backend/inventory/models.py             → InventoryItem, StockTransaction,
+                                              LowStockAlert models
+    backend/inventory/views.py              → InventoryItemViewSet,
+                                              StockTransactionViewSet,
+                                              LowStockAlertViewSet
+    backend/inventory/serializers.py        → InventoryItemSerializer,
+                                              StockTransactionSerializer,
+                                              LowStockAlertSerializer
+    backend/inventory/utils.py              → check_low_stock, send_low_stock_alert
+    backend/inventory/urls.py               → Inventory API routes
+    backend/inventory/migrations/           → Database migrations
+
+    backend/reports/models.py               → Report model
+    backend/reports/views.py                → ReportViewSet (generate_inventory_status,
+                                              generate_stock_summary,
+                                              generate_event_resources, download)
+    backend/reports/generators.py           → PDF and Excel report generators
+                                              (ReportLab + openpyxl)
+    backend/reports/serializers.py          → ReportSerializer
+    backend/reports/urls.py                 → Reports API routes
+    backend/reports/migrations/             → Database migrations
+
+  Frontend:
+    frontend/src/pages/Inventory.jsx        → Inventory dashboard with stock levels,
+                                              search, filter, low stock alerts,
+                                              stock adjustment
+    frontend/src/pages/Reports.jsx          → Report generation UI (PDF/Excel download)
+
+  Media Output:
+    backend/media/reports/                  → Generated PDF/Excel report files
+
+--------------------------------------------------------------------------------
+4. MUHAMMAD MUSHARAF (B01817958)
+   Module: Database Design & DevOps
+--------------------------------------------------------------------------------
+
+TASKS:
+  - Normalised PostgreSQL database schema (8 tables, 3NF)
+  - Docker containerisation of full application stack
+  - Docker Compose multi-service orchestration
+  - Environment variable management
+  - Nginx reverse proxy configuration
+  - Sentry error monitoring setup
+
+IMPLEMENTED IN:
+  Database Schema (via Django migrations):
+    backend/authentication/migrations/      → users, otp_tokens, audit_logs tables
+    backend/events/migrations/              → events, bookings, notifications tables
+    backend/inventory/migrations/           → inventory_items, stock_transactions,
+                                              low_stock_alerts tables
+    backend/reports/migrations/             → reports table
+
+  DevOps / Infrastructure:
+    docker-compose.yml                      → Full stack orchestration
+                                              (backend, frontend, db, nginx)
+    backend/Dockerfile                      → Django backend container
+    frontend/Dockerfile                     → React frontend container
+    nginx/nginx.conf                        → Nginx reverse proxy config
+    backend/starevents/settings.py          → Django settings with python-decouple
+    .env                                    → Environment variables template
+    backend/.env                            → Backend-specific env variables
+    backend/requirements.txt               → Python dependencies (includes sentry-sdk)
+
+  NOTE: GitHub Actions CI/CD pipeline not yet implemented.
+        Heroku deployment not yet configured.
+
+--------------------------------------------------------------------------------
+SHARED / CORE FILES
+--------------------------------------------------------------------------------
+
+  backend/starevents/settings.py            → Main Django configuration
+  backend/starevents/urls.py                → Root URL configuration
+  backend/manage.py                         → Django management entry point
+  frontend/src/App.jsx                      → React routing
+  frontend/src/api/axios.js                 → Axios HTTP client with JWT interceptor
+  frontend/src/contexts/ToastContext.jsx    → Global toast notifications
+  frontend/src/components/Layout.jsx        → App layout (sidebar, navigation)
+  frontend/src/pages/Dashboard.jsx          → Main dashboard with stats and charts
+  frontend/package.json                     → Frontend dependencies
+  backend/requirements.txt                  → Backend dependencies
+
+================================================================================
+END OF TASK MAPPING
+================================================================================

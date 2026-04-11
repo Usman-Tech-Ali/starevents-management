@@ -1,0 +1,194 @@
+University of the West of Scotland
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters Project Specification
+
+Student's Name: Muhammad Musharaf
+Banner id: B01817958
+MSc Programme: MSc Information Technology (COMP11117)
+MSc Programme Leader: Bikrant Koirala	
+
+Project Title 										(5 Marks)
+
+Digital Transformation of StarEvents Management: A Web-Based Event Management System with Advanced Security and Authentication
+Abstract 
+(Project overview reflecting the larger scope of the project.)			 		(10 Marks)
+This group project addresses the digital transformation of StarEvents Management, a fictional small business operating in the event planning sector. Small and medium-sized enterprises (SMEs) in the events industry face mounting pressure to adopt digital technologies in order to remain competitive, improve operational efficiency, and enhance client experiences. Although digital tools are so widely available, most of the SMEs do not have the technical knowledge, planned strategies, and finances to make proper use of them.
+The project is a project with a detailed web-based Digital Transformation Project Plan, developed with the help of React.js in the front-end and Python (Django) in the back-end. The system includes event management platform, inventory tracking, reporting modules and critical three phase security architecture to help in user authentication. The three stage authentication system includes password validation, One-Time Password (OTP) delivery through SMS or email, and facial recognition biometrics, which is a sound, layered method of identity verification appropriate in a digitally transforming SME.
+This individual contribution, led by Muhammad Musharaf, focuses specifically on the design of the relational database schema, system containerisation using Docker, and the implementation of a Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions. This DevOps layer forms the operational backbone of the StarEvents platform - ensuring that all modules developed by group members are integrated, tested, and deployed in a consistent, repeatable, and secure manner. The project employs a DevOps methodology grounded in Infrastructure as Code (IaC) principles. Ethical considerations include secure handling of environment variables and secrets, GDPR-compliant database design, and responsible use of cloud infrastructure. The expected outcome is a fully containerised, automatically deployed web application with a robust CI/CD pipeline that provides the group's system with production-grade reliability and maintainability.
+
+
+Justification and overall Aim 								(10 Marks)
+(Rationale for the research showing gaps in the current knowledge and general statements on intent and direction of the project*) 
+
+ Research Gap and Justification.
+The database design and deployment infrastructure are often not emphasized in the literature of SME digital transformation and usually focus on user-facing solutions, including e-commerce, customer relations management, and other tools (OECD, 2021; Kahveci, 2025). However, the most important predictors of the viability and maintainability of a digital system in the long term are its structural integrity of underlying database schema and the robustness of the deployment process, arguably. A bad relational schema results in data aberrations, bottleneck querying, and referential integrity violations that corrupt data of operations on which all other modules rely (Connolly and Begg, 2014). In a small event management business such as StarEvents, where the accuracy of data, particularly event bookings, client records, inventory in-stock levels, is directly related to the reliability of the business, the quality of the database design is not a technical luxury but an operational requirement.
+Containerisation and CI/CD automation as a core aspect of DevOps are progressively established in the software engineering literature as the basis of maintainable and scalable web apps. The basic premise that Humble and Farley (2010) lay out is that manual deployment processes are prone to errors and that automated deployment pipelines minimize the count and degree of production crashes. In the case of the SMEs that are trying to digitalize without a team of IT operations professionals, the value proposition of Docker containerisation is particularly strong: since the application and all its dependencies are portrayed in an image, it is no longer subject to environment-specific configuration errors, the so-called it works on my machine problem that is widespread in small development teams (Merkel, 2014).
+Although there is an obvious technical explanation, the scholarly background of DevOps implementation in SME settings is limited. Although best practices of CI/CD at the enterprise level are well-documented, peer-reviewed literature on practical advice on how to apply GitHub Actions-based pipelines to web applications with small backends (specifically, Django) and small frontends (specifically, React.js) in containerised deployments is mostly still scarce. This personal contribution will cover this gap through the implementation, documentation, and assessment of an entire DevOps infrastructure of the StarEvents platform, which will serve as a model to be replicated when deploying automated deployment to an SME-grade.
+Overall Aim
+The general objective of this personal project is to create a strong, normalised relational database schema of the StarEvents Management system, deploy the strategy of using Docker containers to implement the system and create and test a CI/CD pipeline that is based on GitHub Actions to carry out testing, security scanning, and deployment to a cloud hosting platform (Heroku). It will seek to show that production grade DevOps infrastructure is a feasible design and implementation in a project of a SME digital transformation in a fifteen week development cycle.
+
+
+
+
+
+
+
+
+Objectives										 (10 Marks)
+(List of tasks to be undertaken to achieve overall aim of the project* and to answer the research question posed)
+This contribution can be defined by the following specific, measurable, and sequenced objectives:
+• Make a specific literature review on relational database design and normalisation theory, Docker containerisation, CI/CD pipeline design with GitHub Actions, cloud deployment on Heroku, and DevOps security practice (Weeks 1-3).
+• Analyse Data requirement of each of the four group modules Security and authentication event management, Inventory and Reporting and the common platform and generate a detailed Entity-Relationship (ER) database documenting all the entities, attributes, primary keys, foreign keys, and cardinality relationships, as shown in Fig 1 (Weeks 2-5).
+• STUDENT Design and code a PostgreSQL database schema in Django, generate normalised table definitions (Third Normal Form3NF), database migration scripts, database-level constraints (NOTNULL, CHECK, UNIQUE), and indexing plans of all high-frequency query columns (Weeks 4-7).
+• Containerise the complete application stack - Django backend, React.js frontend, PostgreSQL database, and Nginx reverse proxy - with Docker and Docker Compose, and generate a docker-compose.yml file that allows all members of the group to develop the application locally in a consistency environment (Weeks 6-9).
+• Run the CI/CD pipeline with GitHub Actions where workflow YAML files are defined to automate: dependency installation, unit testing (Pytest and Jest), Docker image build and push to registry, OWASP ZAP security scanning, and deploy to Heroku staging and production environments (Weeks 8-11).
+• Install Environment variable management with python-decouple library and GitHub Actions Secrets so that sensitive settings (database credentials, API keys, JWT secrets) will never be written to version control (Weeks 9-11).
+• Install application monitoring and error tracking with Sentry on the Django backend and React frontend with alert settings of unhandled exceptions and performance degradation (Weeks 11-13).
+• System integration: Test the entire stack deployed in the production environment using a containerisation, ensure all the four modules operate correctly, and load test using Locust to check system performance when under concurrent (user) simulation (Weeks 12-14).
+• Perform DevOps security audit, which includes analysis of secrets management, vulnerability scanning of container images, enforcement of HTTPS, and access control of databases, report on findings, and take remediation measures (Weeks 13-14).
+• Prepare final documentation on database schema and DevOps infrastructure such as deployment runbooks, environment setup guides and sections of specification (Week 15).
+
+
+Review of Literature 									(20 Marks)
+(An account of the current thinking/published information in the specific area of project*) 
+Relational Database Design and Normalisation.
+The design of a relational database is based on the initial relational model by E. F. Codd (Codd, 1970), which formed the mathematical framework of the organisation of information into relations (sets of data in a table) possessing specified attributes and integrity conditions. Normalisation, which is the successive removal of redundancy in data and the occurrence of update anomalies through the application of a set of normal forms, is the most commonly used method of generating a database schema which is not only logically consistent but also operationally efficient. Connolly and Begg (2014) present normalisation theory in a thorough way, recording the development of First Normal Form (1NF) to Third normal form (3NF) as the optimistic target of the majority of transactional database designs, and offering a compromise between the reduction of redundancy and the complexity of query joins.
+In the case of the StarEvents Management system, the relational schema should be in a position to handle eight basic entities, including Users, Events, Bookings, Inventory, Reports, OTP Tokens, Audit Log and Notifications with clearly defined foreign key relationships that guarantee referential integrity across all inter-table relationships. Particularly treating the constraint system of PostgreSQL, Momjian (2001) records the application of ON DELETE CASCADE and ON DELETE RESTRICT foreign key actions to ensure consistency in the data when the parent records are changed or deleted - a vital aspect to the StarEvents schema in which the deletion of an event should cascade suitable changes to the related Booking and Inventory records.
+Docker Containerisation and Infrastructure as Code.
+Docker is an open-source containerisation platform that bundles application code and all its runtime dependencies libraries, environment variables, configuration files and so on into a portable, isolated container image (Merkel, 2014). Docker architecture isolates the application and the underlying host operating system to have consistent behaviour in both the development and staging and production environments. Such environment consistency is especially useful in the team-driven development settings, where various developers might have either different operating systems (Windows, macOS, Linux) or accidentally add environment-dependent dependencies that make deployments fail.
+Docker Compose builds on the features of Docker to the multi-service application, defining the connections between multiple containers, including a Django application container, a PostgreSQL database container, and an Nginx reverse proxy container, in a single docker-compose.yml file (Docker Inc., 2023). This type of Infrastructure as Code (IaC) means that the complete application stack can be brought up at the press of a button and that it is reproducible and does not require manual configuration operations. Best practices in Docker Compose are recorded by Turnbull (2016) in the deployment of web applications on production-grade scale with the focus on service health checks, container restart policy, and persistent database storage through volume mounts.
+ Continuous Integration and Continuous Deployment.
+Continuous Integration (CI) It is the software engineering concept of automatically compiling and testing code modifications each time they are checked into a common version control system which allows integration errors to quickly be noted (Duvall, Matyas and Glover, 2007). Continuous Deployment (CD) builds on top of CI, as one step deploys successfully tested code to staging or production environments, but all the manual deployment steps are removed since they are slow, error-prone and hard to audit. Humble and Farley (2010) give the most authoritative treatment of the, CI/CD pipeline concept, and insist that the most valuable tool which software teams can use in order to enhance the speed and reliability of delivery is the deployment pipeline, the automated row of build-test-deploy steps.
+GitHub Actions This is a CI/CD framework that is embedded in GitHub, allowing the workflow automation via YAML-written workflow files stored in the .github/workflows/ directory of the repository (GitHub, 2023). A workflow is a series of jobs and steps, which are run on runners that are hosted on GitHub and facilitate the entire CI/CD pipeline, including the dependency installation process up to the deployment to the cloud. In the case of Django and React.js web apps, GitHub Actions has official Python environment actions, Node.js, and Docker image building and pushing action, and Heroku, and is thus a relatively ideal platform to use as the technology stack of the StarEvents project.
+ DevOps Security: Vulnerability Scanning and Secrets Management.
+CI/CD pipeline security This involves the careful management of sensitive configuration data such as database credentials, API keys, JWT secrets, cloud provider access tokens, etc., which need to be accessible to the deployment pipeline but should in no case be revealed in version-controlled code or build logs. GitHub Actions Secrets is an encrypted key-value store of sensitive values, which are injected as environment variables when executing the workflow without being logged (GitHub, 2023). The ZAP (Zed Attack Proxy) tool of the OWASP (Open Web Application Security Project) offers automated dynamic application security testing (DAST) which may be integrated with CI/CD pipelines to scan deployed applications with common web vulnerabilities (OWASP, 2023), such as the OWASP Top 10 vulnerability categories SQL injection, cross-site scripting (XSS), and insecure direct object references.
+Security of container images is another issue with deploying Docker. The use of scanning Docker images to identify known Common Vulnerabilities and Exposures (CVEs) is captured in Anchore (2023) as a component of the CI pipeline to ensure images that have serious vulnerabilities are not pushed to production. In the case of the StarEvents deployment pipeline, a combination of OWASP ZAP dynamic scanning and Docker image vulnerability scanning will be an effective and fully automated security posture suitable to a web application that processes personal data, which is subject to the GDPR.
+ Synthesis and Research Gap
+The literature confirms: (i) that a normalised relational database design is a cornerstone requirement of data integrity in transactional web applications; (ii) that the Docker containerisation offers the necessary benefits of environment consistency to small development teams; (iii) that CI/CD pipelines with automated testing and deployment are the new standard of maintainable web applications; and (iv) that integrated security scanning is part of CI/CD pipelines is a requirement on applications doing personal data. The identified gap that this contribution fills is the lack of documented, end-to-end guidance on DevOps implementation of the web application of SME size created with the help of Django and React.js, a suitable, artefact-based case study that can be followed and reproduced by practitioners and researchers engaged in the digital transformation in the SME
+.
+Methodology										(25 Marks)
+(Explanation and justification of approach and methodology proposed for the project*. This section should explain the nature of the data and method of data collection. Identification and brief discussion of any analytical tools to be used; Identification of any ethical and practical issues.)
+ General Methodological strategy.
+This personal practice is based on a DevOps approach based on the Infrastructure as Code (IaC) principles and viewing are database schema and containerisation configuration and deployment pipeline as first-class software artefacts that undergo version control, testing and refinement with application code. The DevOps approach is a unification of the practices of software development and IT operations with a focus on automation, teamwork, and continuous improvement throughout the entire software delivery life cycle (Kim et al., 2016). This is especially suitable to the current contribution since it requires both hands-on artefact construction (database schema, Docker configuration, and CI/CD pipeline) and systemic testing (integration testing, security scanning, and performance testing) which meets the MSc condition of primary research which should entail practical computing/IT work.
+The deployment is done following a sequential Infrastructure First plan - defining the database schema and containerisation layer and then the CI/CD pipeline, so that the deployment pipeline already has a stable and tested basis to automate. This dependency structure is mirrored in the architectural dependency structure: the database schema has to be settled on before any module is implemented; containerisation has to be implemented before deployment automation can be tested; and the CI/CD pipeline cannot be tested unless the containerised application stack is deployable.
+ Database Schema Design
+The StarEvents Management system database schema is determined to have eight normalised tables which are captured in the Entity-Relationship (ER) diagram in Fig 1 (below). The schema is constructed to the Third normal form (3NF) and hence has no transitive dependencies and each non-key attribute is dependent on the primary key of its table. PostgreSQL-specific features used in the schema design are: serial/UUID primary keys, timestamptz to store time-related data in a database, and JSONB columns to store flexible parameters in the Reports table, and partial indexes to optimise limited selections on large tables such as Audit Log and Notifications.
+
+ 
+Fig 1: Entity-Relationship (ER) Diagram -Normalised Database Schema of StarEvents Management System.
+ CI/CD Pipeline Design
+The CI/CD pipeline is embodied in three consecutive stages of the GitHub Actions workflows such as Code and Build, Test and Security, and Deploy and Monitor, which are recorded in Fig 2 below. Every stage generates an artefact (tested Docker image, security-cleared image, deployed application) which denotes access to the subsequent stage. Unsuccessful stages raise automated warnings to the development team and prevent deployment such that only code meeting all automated quality gates is deployed to production.
+
+ 
+Fig 2: CI/CD Deployment Pipeline Flowchart -Automated Build, Test, and Deploy Process-Three stages.
+Development Tools and Technologies.
+The implementation of the Database and DevOps Module would involve the following tools and structures:
+•	PostgreSQL 15: Leading relational DB, high-level constraint, indexing and JSONB.
+•	Django ORM and the Migrations: Defining schema, migration scripts with version control, and query interface.
+•	Docker and Docker Compose: Multi-service orchestration and application containerisation.
+Nginx: Reverse proxy and static file server Production container stack.
+•	GitHub Actions: CI/CD Workflow automation using pipeline steps that are defined in YAML.
+OWASP ZAP: Automated DAST security testing in the CI pipeline.
+•	Heroku: PaaS cloud deployment of stages and production.
+•	python-decouple: Django settings management environment variable.
+Sentry: A Django and React application error tracker and performance monitoring.
+•	Locust (python): Distributed load testing of the deployed application with concurrent users simulation.
+•	pgAdmin / DBeaver: Database management and schema management programs.
+Data Collection and Character of primary research.
+Primary research is implemented as the artefact development and systematical assessment on three planes. First, the database schema will be checked in terms of referential integrity constraints, normalisation adherence and query performance (measured in execution time of typical ORM queries) against a test database filled with 1,000 synthetic database records per table. Second, the CI/CD pipeline testing will quantify the time to execute pipelines, coverage of test in each stage, and false positive of the OWASP ZAP security scanner. Third, the system integration test will ensure that all four group modules operate with the containerised production environment and that the Locust load testing the system response times and error rate are less than 50 and 100 simultaneous user simulations.
+ Practical and Ethical Issues.
+The database schema would contain personal information such as user credentials, email address, and facial recognition embeddings, all of which are the target of the GDPR. The schema provides data minimisation (personal data should only be collected to the extent that it is needed to run the operations), the storage constraint (the retention period of audit log and notification records is configurable), and the pseudonymisation (the user identifiers are in the exported reports). Database backups will be encrypted with AES-256 at rest and database connections will be done using SSL/TLS. Only sensitive configuration is going to be stored as GitHub Actions Secrets and never appear in code or logs. All testing of the load will be done by synthetic only. The ethical risk of the project is currently low since there is no actual user personal data that is gathered at any point.
+
+
+
+
+Work Plan 										(10 Marks)
+(A timetable for completion of the project*. MSc Masters Project full-time is allowed 15 weeks and part-time is 30 weeks. You may use any appropriate method to present the well-thought-through plan of action reflecting your project* activities)
+The Gantt chart below (Fig 3) presents the 15-week schedule across four phases: Database Design, Containerisation, CI/CD Pipeline, and Testing & Documentation
+Fig 3: Project Gantt Chart - 15-Week Timeline for Database Design, Deployment & DevOps Module
+
+WeekKey ActivitiesDeliverableEffort (hrs)Notes / Risk1-3Literature review: DB design, normalisation, Docker, GitHub Actions, Heroku, OWASPAnnotated bibliography; lit review draft40/wkFocus on peer-reviewed and official docs2-5ER diagram: all 8 entities, attributes, PK/FK, cardinality; group schema alignmentER diagram (Fig 1); agreed DB schema40/wkMust align with all 3 other modules4-7Django models, migrations, constraints, indexes; PostgreSQL setupDjango migration files; DB schema in PostgreSQL40/wkRisk: schema change requests from group6-9Docker: Dockerfile for Django & React; docker-compose.yml; Nginx configWorking docker-compose stack; local dev guide40/wkRisk: port conflicts; volume persistence8-11GitHub Actions: CI workflow YAML; Pytest + Jest automation; Docker build/pushWorking CI pipeline; test pass/fail reports40/wkRisk: GitHub Actions runner limits9-11Environment variables: python-decouple; GitHub Secrets; .env templatesSecrets management guide; .env.example file35/wkNever commit secrets to repo11-13OWASP ZAP scan integration; CD pipeline to Heroku staging + productionCD pipeline; ZAP scan report; Heroku deployment40/wkRisk: Heroku dyno cold starts11-13Sentry monitoring setup for Django backend and React frontendSentry project configured; alert thresholds set35/wkCoordinate with all group members12-14Integration testing; Locust load testing; DevOps security auditIntegration test report; Locust results; audit doc40/wkTarget: <2s response under 50 users13-15Documentation: DB runbook, deployment guide; individual spec; supervisor reviewCompleted specification; deployment runbook30/wkBuffer for last-minute issues
+
+
+
+
+
+
+
+
+References
+(Correctly presented in Cite Them Right Harvard style)					(10 Marks)
+• Anchore (2023) Anchore engine: Container security and compliance. Available at: https://anchore.com/ (Accessed: 10 February 2026).
+• Codd, E.F. (1970) 'A relational model of data for large shared data banks', Communications of the ACM, 13(6), pp. 377-387. https://doi.org/10.1145/362384.362685
+• Connolly, T. and Begg, C. (2014) Database systems: A practical approach to design, implementation, and management. 6th edn. Harlow: Pearson Education. https://www.pearson.com/en-gb/subject-catalog/p/database-systems-a-practical-approach-to-design-implementation-and-management/P200000003964
+• Docker Inc. (2023) Docker Compose overview. Available at: https://docs.docker.com/compose/ (Accessed: 10 February 2026).
+• Duvall, P., Matyas, S. and Glover, A. (2007) Continuous integration: Improving software quality and reducing risk. Reading: Addison-Wesley. https://www.informit.com/store/continuous-integration-improving-software-quality-9780321336385
+• GitHub (2023) GitHub Actions documentation. Available at: https://docs.github.com/en/actions (Accessed: 10 February 2026).
+• Humble, J. and Farley, D. (2010) Continuous delivery: Reliable software releases through build, test, and deployment automation. Reading: Addison-Wesley. https://www.informit.com/store/continuous-delivery-reliable-software-releases-9780321601919
+• Kahveci, E. (2025) 'Digital transformation strategies and challenges in small and medium enterprises (SMEs): A systematic review and future directions', Journal of Innovation and Entrepreneurship, 13, Article 84. doi: 10.1186/s13731-025-00384-y. https://link.springer.com/article/10.1186/s13731-025-00576-8
+• Merkel, D. (2014) 'Docker: Lightweight Linux containers for consistent development and deployment', Linux Journal, 239, Article 2. Available at: https://www.seltzer.com/margo/teaching/CS508.19/papers/merkel14.pdf
+consistent-development-and-deployment (Accessed: 10 February 2026).
+• OECD (2021) The digital transformation of SMEs. OECD Studies on SMEs and Entrepreneurship. Paris: OECD Publishing. https://doi.org/10.1787/bdb9256a-en
+• Turnbull, J. (2016) The Docker book: Containerization is the new virtualization. Available at: https://dockerbook.com (Accessed: 10 February 2026).
+
+
+
+
+
+
+
+*Individual contribution for group project
+
+Marking scheme
+(Marking scheme for final report/dissertation. Note: For group project, each student in a team must submit their own sections for- Presentation of results, Conclusions and Critical Self-Evaluation)
+
+Introduction5Literature Review15Research Design15Implementation25Testing10Presentation of Results10Conclusions10Critical Self-Evaluation10Total100
+Supervisor
+Ahren Hart
+Moderator
+Haider Ali
+Programme Leader
+Md Masum Rana
+Date specification submitted
+
+Please complete the 'ethics' & pathway confirmation form below for all projects.
+
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters PROJECT - REQUIREMENT FOR ETHICAL APPROVAL & PATHWAY CONFIRMATION
+
+SECTION 1: TO BE COMPLETED BY THE STUDENT(S)
+Does your proposed research involve: research with human subjects (including requirements gathering and product/software testing), access to company documents/records, questionnaires, surveys, focus groups and/or other interview techniques? Does your research entail any process which requires ethical approval? (please enter v in the appropriate box)
+
+YESYou must submit an application for approval to the Ethics Review ManagerNOYou do not need to submit an application to the Ethics Review Manager
+
+I confirm that the above project specification aligns with my MSc programme specialist pathway. (please enter v in the box)
+Name of student (print name): Musharaf
+
+Signature: Musharaf
+
+
+
+
+SECTION 2: TO BE COMPLETED BY THE PROJECT SUPERVISOR
+I understand that the above project requires/does not require* ethical approval (*please delete as appropriate).
+       I confirm that the above project aligns with the MSc programme specialist pathway the
+        Student(s) is (are) enrolled in. (please enter v in the box)
+
+Supervisor (print name): 
+
+Signature:
+
+Date:
+
+IMPORTANT: please note that by signing this form all signatories are confirming that any potential ethical issues have been considered and, where necessary, an application for ethical approval has been/will be made via the Ethical Review Manager software.  
+Any project requiring ethical approval but which has not been given approval will not be accepted for marking. 
+Ethical approval cannot be sought in retrospect.
+
+
+MSc Masters Project specification2025/26
+
+2
+
+

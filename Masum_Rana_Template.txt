@@ -1,0 +1,186 @@
+﻿MSc Masters Project specification2025/26
+University of the West of Scotland
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters Project Specification
+
+Student’s Name: Md Masum Rana
+Banner id: B01819535
+MSc Programme: MSc Information Technology (COMP11117)
+MSc Programme Leader: Bikrant Koirala	
+
+Project Title 										(5 Marks)
+
+Digital Transformation of StarEvents Management: A Web-Based Event Management System with Advanced Security and Authentication
+Abstract 
+(Project overview reflecting the larger scope of the project.)			 		(10 Marks)
+This group project addresses the digital transformation of StarEvents Management, a fictional small business operating in the event planning sector. Small and medium-sized enterprises (SMEs) in the events industry face mounting pressure to adopt digital technologies in order to remain competitive, improve operational efficiency, and enhance client experiences. Although digital tools are so widely available, most of the SMEs do not have the technical knowledge, planned strategies, and finances to make proper use of them.
+The project is a project with a detailed web-based Digital Transformation Project Plan, developed with the help of React.js in the front-end and Python (Django) in the back-end. The system includes event management platform, inventory tracking, reporting modules and critical three phase security architecture to help in user authentication. The three stage authentication system includes password validation, One-Time Password (OTP) delivery through SMS or email, and facial recognition biometrics, which is a sound, layered method of identity verification appropriate in a digitally transforming SME.
+This individual contribution, led by Md Masum Rana, focuses specifically on the design, development, and evaluation of the Inventory Management and Reporting Module — the operational intelligence layer of the StarEvents platform. This module enables real-time tracking of event resources and equipment, automated low-stock alerts, and the generation of analytical reports (PDF and Excel formats) to support management decision-making. The project employs a Data-Driven Design methodology combining relational database modelling, business intelligence principles, and RESTful API development. Ethical considerations include GDPR-compliant data retention policies, role-based access control for sensitive stock data, and informed consent for usability testing. The expected outcome is a fully functional, report-generating inventory system that provides StarEvents management with the operational visibility necessary to scale their digital operations effectively.
+
+
+Justification and overall Aim 								(10 Marks)
+(Rationale for the research showing gaps in the current knowledge and general statements on intent and direction of the project*) 
+Research Gap and Justification.
+Inventory and resource management is a very important operation need in any business that deals with event management. Katunzi (2011) records that low stock visibility and the use of manual resources tracking systems are some of the key contributors to operational collapse in small event businesses leading to the double-booking of equipment, under-ordering of consumables, and reactive instead of proactive allocation of resources. In the case of StarEvents Management, the change of inventory tracking instruments using a spreadsheet to a real-time digital technology is among the top-priority investments in digital transformation, as it will translate into a direct decrease in the amount of wasted material, the number of staff hours dedicated to counting stocks manually, and the probability of resource shortages during events.
+The academic research on business intelligence (BI) and SMEs reporting systems demonstrates a constant mismatch between the offer of enterprise-level BI solutions and the actual implementation of such systems in the small businesses. Olszak and Ziemba (2012) list prohibitive cost and complexity of the enterprise BI platforms as the key impediment to SME adoption, where the small businesses need lightweight, integrated reporting solutions that can be integrated into its operating frameworks and do not need dedicated platforms. This fact is what directly explains the current approach of this contribution, which is developing a tailor-made reporting engine as a part of the StarEvents Django backend, which will be able to produce the report out of the available operational data without any other BI infrastructure.
+Technically, the literature on relational database design and SQL-based analytics stresses the ability of PostgresSQL to execute complicated aggregation statements, window functions, and outcomes of reports that become way above straightforward CRUD operations (Momjian, 2001). The combination of Python-based report generating libraries, especially ReportLab to create PDF output and openpyxl to export Excel files is an operationally sound and well-documented avenue to custom reporting in web applications (Bayer, 2020). Nevertheless, the applied implementation guidelines regarding SME contexts, especially events industry, are mostly unavailable in peer-reviewed literature, and this is where the gap that this individual contribution directly addresses.
+ Overall Aim
+The general purpose of this personal project is to design, develop, and test a complete Inventory Management and Reporting Module to the StarEvents Management web application. This module will include real-time tracking of stocks of event resources and equipment, automated low-stock based alerts, an analytics reporting engine that is able to produce inventory status report, event resource utilisation summary and management dashboard which will be in both PDF and Excel format. It is hoped to show that an inventory and reporting system driven by data is feasible to develop and test in a fifteen-week development cycle to serve as a model of operational intelligence in projecting digital transformation in SMEs.
+
+
+
+
+
+
+
+Objectives										 (10 Marks)
+(List of tasks to be undertaken to achieve overall aim of the project* and to answer the research question posed)
+The individual contribution is set forth as follows using specific, measurable and sequenced objectives:
+• Undertake a specific literature search on inventory management systems, business intelligence in SMEs, relational database design in reporting, and GDPR data retention expectation with respect to operational stock data (Weeks 1-3).
+• Specify the functional and non-functional requirements of the Inventory Management and Reporting Module by examining the needs of the various stakeholders (Admin, Staff, Management), the types of event resources to be tracked, alert points and types of reports needed (Weeks 2-4).
+• Design the relational database structure of the inventory and reports subsystem, the Inventory table, Stock Transaction Log, Reports table, and the foreign key relationships between the Inventory table and the Events and Bookings tables, creating an Entity-Relationship (ER) diagram (Weeks 3-5).
+• Develop Level 1 Data Flow Diagram (DFD) documenting the flow of inventory data within the system - including input and validation to storage, generation of alerts, aggregation, and report creation as shown in Fig 1 (Weeks 4-5).
+• Django REST Framework Implement the Inventory CRUD (Create, Read, Update, Delete) API with endpoints to add new stock, update quantities, soft-delete discontinued stock, and retrieve the current stock levels with filtering and search capabilities (Weeks 5- 8).
+• Install the low-stock alert engine into the Django backend, which sends out automated email notifications (through the email system in Django) in case any inventory item drops below its set minimum point, with thresholds customized per item type (Weeks 7-10).
+• Implement the report generation server with Python ReportLabs library (PDF) and openpyxl (Excel), generate inventory status reports, event resources utilisation reports, and monthly stock summary reports, and serve them via Django REST API endpoints (Weeks 8-11).
+• Develop the React.js inventory dashboard with stock level displays, search and filter features, low-stock warning displays, and interactive charts (with Recharts or Chart.js) to visualise the stock trends and resource utilisation over time (Weeks 9-12).
+• Functional test all inventory and reporting capabilities and unit tests on Django API views (Pytest/Django TestCase), database query performance test, and report output validation against known test data (Weeks 11-13).
+• Test the module with five proxy users in a structured test and gauge report generation performance under load and a GDPR data retention audit, record the results and take any action required to correct (Weeks 12-15).
+
+Review of Literature 									(20 Marks)
+(An account of the current thinking/published information in the specific area of project*) 
+Inventory Management Digital Transformation in SME.
+Inventory management Inventory management is a core operational activity that is invariably named as a top-priority goal of second mover digitisation on the digitalisation of SMEs by digital transformation frameworks. Katunzi (2011) provides empirical study of barriers to business process integration in SMEs and concludes that manual inventory and stock tracking processes have been a leading source of operational inefficiency in service-based businesses, which consume large shares of staff time. The author records that small businesses that switch to the digital system of inventory record quantifiable benefits in stock accuracy (lessened discrepancy rates) and employee productivity (lessened time on manual counts), which justifies the business case of the current contribution.
+Resource management in the particular case of the events industry would cover equipment inventories (audio-visual, furniture, decor), consumable stock (catering supplies, stationery), and venue capacity tracking of which real-time visibility is necessary to avoid failures on the event-day. According to Silvers (2012), resource planning and inventory control are the key success factors in professional event management because the transition to a digital resource tracking system is a pre-condition to expanding a small business, that solely runs a small event, to a scale where it can run numerous simultaneous events. The current contribution is a direct response to this requirement through the introduction of a digital inventory platform within the overall StarEvents event management platform.
+ SME Business Intelligence and Reporting Systems.
+Business intelligence (BI) refers to technologies, processes and practices involved in gathering, integrating, analysing and packaging business knowledge to help business managers in making decisions (Negash and Gray, 2008). With SMEs, the key issue with BI implementation is the difference in complexity and cost between enterprise BI tools (Tableau, Power BI, or SAP BusinessObjects) and resource limitation of small business. Olszak and Ziemba (2012) present an overview of BI in SMEs, finding that successful BI deployment of SMEs is typified by simplicity, direct connection with existing working databases and low incremental costs - exactly the design principles that underlie the embedded reporting engine approach to this individual contribution.
+The idea of operational reporting, the production of reports on the basis of transactional databases and no data warehouse, especially concerns SMEs that do not have volumes of data and infrastructure to warrant data warehousing (Kimball and Ross, 2013). The ORM of Django gives the robust query interface, which allows complex aggregations, grouping and filtering PostgreSQL data with only a small amount of extra infrastructure and thus it is a suitable technology to use in lightweight operational reporting in StarEvents case.
+ Python Report writing Libraries.
+There are two common programmatic report generation libraries in web applications available to Python. ReportLab is an open-source and well-matured Python library that can be used to create PDF documents with exact control over layout, typography, tables, and charts (ReportLab Group, 2023). It is especially popular in the creation of formatted business reports that have similar layout over multiple pages, and its Platypus document layout engine has full support in creating, reading and updating Excel (.xlsx) files in Python, and can be used to create multi-sheet workbooks with fixed formatting of tables, charts, and formulae (Bayer, 2020). ReportLab with openpyxl as a component of a Django REST API is also a technically sound solution with library-proven capability to generate multi-format reports in the absence of third-party reporting services.
+To visualise the data in the React.js frontend, the charting library Recharts - a composable charting library, which is a build on D3.js and React - has accessible and responsive chart components (line charts, bar charts, pie charts) that are informative to show inventory trends and resource utilisation information on a management dashboard (Recharts, 2023). Recharts with React state management has the opportunity to visualise the dashboard and this data will update in real time as the inventory changes, which will give management a real-time view of the operations.
+ Inventory and report system design Database.
+Inventory system database design must be done with due consideration to normalisation, indexing and query performance. Momjian (2001) offers some background to the PostgreSQL database design, the significance of an appropriate indexing within the frequently accessed columns (i.e. item SKU, category, and stock level) in inventory tables and the application of database-level constraints (NOT NULL, CHECK constraint) to maintain data integrity. In the case of the reporting subsystem, the window functions (aggregate functions used over a moving window of rows) of PostgreSQL facilitate effective computation of running totals, moving averages and cumulative stock change measures without the need to run separate sequential queries.
+The inventory data must be subject to GDPR compliance, where the concentration on data retention policies must be observed especially in the inventory stock transactions that might include information of personnel members who executed the stock update. The information commissioner office (ICO, 2021) policy on data minimisation and storage limitation under the GDPR article 5 stipulates that personal data must not be stored longer than it is needed in its operation. In the case of StarEvents inventory system, this would be by the introduction of configurable data retention policy; that is; automatically deleting stock transaction log records which are older than a specified retention period; and pseudonymising staff identifiers in transaction logs when feasible.
+ Synthesis and Research Gap
+The body of literature collectively supports: (i) that inventory management digitisation can deliver quantifiable operational advantages to small event business; (ii) that SME-friendly BI needs lighter weight integrated reporting systems than enterprise BI systems; (iii) that Python ReportLab and openpyxl libraries are technically validated, no-cost solutions to generation of multi-format reports; and (iv) PostgreSQL offers adequate analytical support to generation of operational reports without data warehousing infrastructure. The knowledge gap that the contribution aims to fill is the lack of an artefact-based implementation of a combined inventory and reporting system in an SME digital transformation project, a case study that is practical and replicable but remains largely descriptive, which is the void of the SME digitisation literature.
+.
+Methodology										(25 Marks)
+(Explanation and justification of approach and methodology proposed for the project*. This section should explain the nature of the data and method of data collection. Identification and brief discussion of any analytical tools to be used; Identification of any ethical and practical issues.)
+The general approach of the methodology will be as follows.
+Contribution takes the form of a Data-Driven Design (DDD) approach which emphasises as the main artefact of the design the modelling of data structures, flows and transformations and then derives application logic and user interface elements based on the data model instead of defining them independently. This method is based on the literature on database design (Connolly and Begg, 2014) and is especially suitable in the case of inventory and reporting systems when the quality, integrity, and queryability of the data model underpinning them simply reflect into the quality of the reporting products. DDD methodology follows five steps namely the analysis of data requirements, data modelling (ER diagram), data flow design (DFD), the implementation (API and frontend) and evaluation (testing and performance evaluation).
+This research design meets MSc project criteria of a primary research relating to practical computing/IT activity. The main research deliverable is a functional inventory and reporting system (artefact), which will be assessed by conducting functional testing, performance benchmarking of report generation queries, and assessing the management dashboard usability. The data-driven model makes the value of the system based on the quality of analytical output of the system instead of the user interface itself.
+ Data flow design and System Architecture.
+The inventory and reporting module is a collection of Django REST Framework API endpoints that are in communication with PostgreSQL, with React.js front end elements using the APIs to display the output and allow interaction with users. The data flows within the module are recorded in a Level 1 Data Flow Diagram (DFD) shown in Fig 1 (below), which gives the flow of inventory data as it enters the module until it is validated by the system and stored in the repository, then aggregated and printed in a report. The six core processes (Input of Inventory, Stock Validation, Alert Engine, Report Generation, Data Aggregation, Export Formatter) and three data stores (Inventory Table, Reports Table, Events/Bookings Table) are identified by the DFD.
+
+
+ 
+Fig 1: Data Flow Diagram (DFD Level 1) -Inventory and Reporting Module Data Flows and Processes.
+ Design of Inventory Management Process.
+The inventory management process involves the entire cycle of a stock item including its entry into the system up to its updates, threshold notifications and, subsequently, its reporting. Fig 2 (below) shows the entire process flow and highlights the three major user paths, adding new inventory items, changing the quantity of the existing stock (with low-stock threshold checking and automatic alert dispatched), and creating analytical reports (with the PDF and Excel export options). Every activity will be recorded in an audit trail to be accountable and compliant with GDPR.
+
+ 
+
+Fig 2: Stock Tracking, Alerts and Report Generation- Inventory Management and Reporting Process Flowchart.
+Development Tools and Technologies.
+The implementation of the Inventory Management and Reporting Module will take the following tools and frameworks:
+•	Django REST Framework: RESTful API to inventory CRUD operations and generating reports.
+•	PostgreSQL and Django ORM: Relational database to store inventory and transactions logs; complicated aggregation queries to generate reports.
+ReportLab (Python): Python-based programmatic PDF report generation of inventory utilisation and status reports.
+•	openpyxl (Python): Excel (.xlsx) workbook creation of export inventory data and management summaries.
+•	Pytest and Django TestCase: Unit testing and integration testing of API views and report generation logic of inventory API.
+•	React.js and Axios Frontend inventory dashboard disease Django REST APIs.
+•	Recharts: React charting library of stock level trend charts and resource utilisation charts.
+•	Django Email Backend (SMTP): Automated low-stock email notification.
+The following can be used:
+•	Locust (Python): Report generation API endpoints under user simulation concurrently.
+Primary Research Collection and Nature: The research will be conducted face-to-face in a setting where respondents are interviewed by the researcher.
+Primary research is performed in shape of artefact development and systematic assessment in three dimensions. To ensure that all inventory CRUD operations, logic of alerts, and report generation are correct, first, functional testing will be used to test the pre-defined test cases against known synthetic data sets. Second, the API response times to report generation requests when there are concurrent users will be measured with a performance testing tool (Locust), which sets whether the system meets the target response time of less than three seconds to generate a standard report. Third, the inventory dashboard and report generation interface will be tested with five proxy users to compare it to the heuristics proposed by Nielsen in terms of time to complete a task and an error rate with the most frequent inventory management tasks.
+Ethical and Practical Considerations.
+The inventory module manipulates data that can contain reference to a staff member (in the audit log of stock transaction) is personal data under GDPR. The system will incorporate: The configurable retention time of transaction logs (a default of 12 months) will be applied to the transaction logs, staff identifiers in the exported reports will be pseudonymised, and role-based access control (RBAC), such that only licensed Admin and Manager identities will access full inventory reports and audit logs. No actual business inventory data will be gathered or employed in all the user testing which will be done using synthetic data. Any usability testing session utilizing human participants will require ethics approval through the UWS Ethics Review Manager. The compliance with the GDPR will be officially recorded in the Data Protection Impact Assessment (DPIA) template that will be filled in regarding the inventory module.
+
+
+
+
+Work Plan 										(10 Marks)
+(A timetable for completion of the project*. MSc Masters Project full-time is allowed 15 weeks and part-time is 30 weeks. You may use any appropriate method to present the well-thought-through plan of action reflecting your project* activities)
+The Gantt chart below (Fig 3) presents the 15-week project schedule for this individual contribution across five phases: Requirements & Design, Database & API Development, Reporting Engine, Frontend Dashboard, and Testing & Documentation
+
+Fig 3: Project Gantt Chart — 15-Week Timeline for Inventory Management & Reporting Module Development
+
+WeekKey ActivitiesDeliverableEffort (hrs)Notes / Risk1–3Literature review: inventory systems, BI for SMEs, ReportLab, openpyxl, GDPR retentionAnnotated bibliography; lit review draft40/wkPeer-reviewed sources only; no preprints2–4Requirements analysis; stakeholder role mapping; stock category definitionRequirements spec; inventory category list40/wkCoordinate with group on data model boundaries3–5ER diagram design; PostgreSQL schema for Inventory, Transaction Log, Reports tablesER diagram; migration files40/wkRisk: schema conflicts with Booking module4–5Level 1 DFD design; system design documentationDFD diagram (Fig 1); design doc35/wkSupervisor review of DFD5–8Inventory CRUD API: Django REST endpoints, search/filter, paginationWorking inventory API; Postman test collection40/wkRisk: complex filter query optimisation7–10Low-stock alert engine: threshold logic, Django email dispatch, alert logAlert engine; email notification tests40/wkSMTP config; test with dummy email server8–11Report generation engine: ReportLab PDF, openpyxl Excel, aggregation queriesPDF and Excel report outputs; query benchmarks40/wkRisk: ReportLab layout complexity9–12React inventory dashboard: stock displays, Recharts visualisations, search UIFunctional dashboard; chart components40/wkCoordinate API contracts with Event module11–13Functional testing: Pytest units, integration tests, report accuracy verificationTest report; >80% coverage target40/wkBuffer time for query performance fixes12–14UAT with 5 proxy users; Locust load testing; GDPR DPIA documentationUAT report; DPIA document; load test results35/wkEthics approval must be confirmed first13–15Final documentation; individual spec sections; group system integration; supervisor reviewCompleted specification; integrated module30/wkBuffer for last-minute integration issues
+
+
+References
+(Correctly presented in Cite Them Right Harvard style)					(10 Marks)
+• Bayer, E. (2020) openpyxl: A Python library to read/write Excel 2010 xlsx/xlsm files. Available at: https://openpyxl.readthedocs.io/en/stable/ (Accessed: 10 February 2026).
+• Connolly, T. and Begg, C. (2014) Database systems: A practical approach to design, implementation, and management. 6th edn. Harlow: Pearson Education https://www.pearson.com/en-gb/subject-catalog/p/Begg-Database-Systems-A-Practical-Approach-to-Design-Implementation-and-Management-Global-Edition-6th-Edition/P200000003964?view=educator&utm_source=chatgpt.com.
+• ICO (Information Commissioner's Office) (2021) Guide to the UK General Data Protection Regulation (UK GDPR): Principles — storage limitation. Available at: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-protection-principles/a-guide-to-the-data-protection-principles/storage-limitation/ (Accessed: 10 February 2026).
+• Katunzi, T.M. (2011) 'Obstacles to business process integration in supply chain management: The Tanzanian SME perspective', International Journal of Business and Management, 6(2), https://www.ccsenet.org/journal/index.php/ijbm/article/view/10433.
+• Kimball, R. and Ross, M. (2013) The data warehouse toolkit: The definitive guide to dimensional modelling. 3rd edn. Indianapolis: John Wiley and Sons. https://www.wiley-vch.de/en/areas-interest/computing-computer-sciences/computer-science-17cs/database-data-warehousing-technologies-17csb/the-data-warehouse-toolkit-978-1-118-53080-1?utm_source=chatgpt.com
+• Negash, S. and Gray, P. (2008) 'Business intelligence', in Handbook on decision support systems 2. Berlin: Springer, pp. 175–193. https://link.springer.com/chapter/10.1007/978-3-540-48716-6_9
+• Nielsen, J. (1994) 'Enhancing the explanatory power of usability heuristics', in Proceedings of the SIGCHI Conference on Human Factors in Computing Systems. New York: ACM, pp. 152–158. https://doi.org/10.1145/191666.191729
+• OECD (2021) The digital transformation of SMEs. OECD Studies on SMEs and Entrepreneurship. Paris: OECD Publishing. https://doi.org/10.1787/bdb9256a-en.
+• Olszak, C.M. and Ziemba, E. (2012) 'Critical success factors for implementing business intelligence systems in small and medium enterprises on the example of upper Silesia, Poland', Interdisciplinary Journal of Information, Knowledge, and Management, 7, pp. 129–150. https://www.informingscience.org/Publications/1584
+• ReportLab Group (2023) ReportLab open-source PDF toolkit. Available at: https://www.reportlab.com/opensource/ (Accessed: 10 February 2026).
+• Silvers, J.R. (2012) Professional event coordination. 2nd edn. Hoboken: John Wiley and Sons.
+• Duan, Y., Cao, G. and Edwards, J.S. (2020) 'Understanding the impact of business analytics on innovation', European Journal of Operational Research, 281(3), pp. 673–686. doi: 10.1016/j.ejor.2019.03.029.
+
+
+
+
+
+
+
+*Individual contribution for group project
+
+Marking scheme
+(Marking scheme for final report/dissertation. Note: For group project, each student in a team must submit their own sections for- Presentation of results, Conclusions and Critical Self-Evaluation)
+
+Introduction5Literature Review15Research Design15Implementation25Testing10Presentation of Results10Conclusions10Critical Self-Evaluation10Total100
+Supervisor
+Ahren Hart
+Moderator
+Haider Ali
+Programme Leader
+Md Masum Rana
+Date specification submitted
+Feb 2026
+Please complete the ‘ethics’ & pathway confirmation form below for all projects.
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters PROJECT – REQUIREMENT FOR ETHICAL APPROVAL & PATHWAY CONFIRMATION
+
+SECTION 1: TO BE COMPLETED BY THE STUDENT(S)
+Does your proposed research involve: research with human subjects (including requirements gathering and product/software testing), access to company documents/records, questionnaires, surveys, focus groups and/or other interview techniques? Does your research entail any process which requires ethical approval? (please enter √ in the appropriate box)
+
+YESYou must submit an application for approval to the Ethics Review ManagerNOYou do not need to submit an application to the Ethics Review Manager
+
+√
+I confirm that the above project specification aligns with my MSc programme specialist pathway. (please enter √ in the box)
+Name of student (print name): Masum Rana
+
+Signature: Masum Rana
+
+
+
+
+SECTION 2: TO BE COMPLETED BY THE PROJECT SUPERVISOR
+I understand that the above project requires/does not require* ethical approval (*please delete as appropriate).
+
+I confirm that the above project aligns with the MSc programme specialist pathway the
+ Student(s) is (are) enrolled in. (please enter √ in the box)
+
+Supervisor (print name): 
+
+Signature:
+
+Date:
+
+IMPORTANT: please note that by signing this form all signatories are confirming that any potential ethical issues have been considered and, where necessary, an application for ethical approval has been/will be made via the Ethical Review Manager software.  
+Any project requiring ethical approval but which has not been given approval will not be accepted for marking. 
+Ethical approval cannot be sought in retrospect.
+
+
+2
+

@@ -1,0 +1,185 @@
+﻿MSc Masters Project specification2025/26
+University of the West of Scotland
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters Project Specification
+
+Student’s Name: Muhammad Mohsin Khan
+Banner id: B01819889
+MSc Programme: MSc Information Technology (COMP11117)
+MSc Programme Leader: Bikrant Koirala	
+
+Project Title 										(5 Marks)
+
+Digital Transformation of StarEvents Management: A Web-Based Event Management System with Advanced Security and Authentication
+Abstract 
+(Project overview reflecting the larger scope of the project.)			 		(10 Marks)
+This group project addresses the digital transformation of StarEvents Management, a fictional small business operating in the event planning sector. Small and medium-sized enterprises (SMEs) in the events industry face mounting pressure to adopt digital technologies in order to remain competitive, improve operational efficiency, and enhance client experiences. Although digital tools are so widely available, most of the SMEs do not have the technical knowledge, planned strategies, and finances to make proper use of them.
+The project is a project with a detailed web-based Digital Transformation Project Plan, developed with the help of React.js in the front-end and Python (Django) in the back-end. The system includes event management platform, inventory tracking, reporting modules and critical three phase security architecture to help in user authentication. The three stage authentication system includes password validation, One-Time Password (OTP) delivery through SMS or email, and facial recognition biometrics, which is a sound, layered method of identity verification appropriate in a digitally transforming SME.
+This individual contribution, led by Muhammad Mohsin Khan, focuses specifically on the design and implementation of the Event Management and Booking Module — the core operational interface through which staff and clients interact with the StarEvents platform. This module encompasses event creation, scheduling, client booking workflows, and notification services. The project employs an Agile iterative development methodology, with user-centred design principles guiding the frontend React.js implementation. Ethical considerations include accessibility compliance (WCAG 2.1), data privacy for client booking records, and informed consent for user testing. The expected outcome is a fully functional, responsive, and accessible event management interface that forms the operational backbone of the group's digital transformation platform.
+
+
+Justification and overall Aim 								(10 Marks)
+(Rationale for the research showing gaps in the current knowledge and general statements on intent and direction of the project*) 
+Research Gap and Justification.
+The digital platforms are greatly disrupting the event management industry because the paper-based and telephone-based workflow is being replaced. In the case of small event management businesses in particular, the adoption of digital operations is both a challenge and an opportunity. A study by Piccoli and Pigni (2018) confirms that digitally based operational systems directly decrease the administrative load and accelerate service provision in hospitality and events related settings; however, it is observed by Savic (2020) that the service sector SMEs still underinvest on frontend customer facing digital interfaces, which generate revenue, in favour of automating the back-office.
+There is a significant knowledge gap in the literature on experience on practical, end to end implementation of web-based event management systems on small businesses. Available market solutions (Eventbrite, Cvent, Bizzabo) are tailored to large-scale organizations with dedicated IT departments and budgets and cannot be used by SMEs that employ only ten or fewer employees (Getz and Page, 2016). The alternatives based on open-source do not offer the ability to customise and integrate their security to provide end-to-end digital transformation. It is evident then that there is the requisite to develop custom purpose-based, modular web applications that incorporate event management, client booking and robust security into one consistent platform to fit within the constraints of SMEs.
+Technically, the discussion on React.js-based front-end development suggests that the component-based nature of the framework is well suited to the implementation of scalable, maintainable interfaces in dynamic applications with heavy data loads, i.e. event calendars and booking forms (Banks and Porcello, 2017). Nonetheless, the use of React.js in the particular case of SME events management with a focus on the accessibility, mobile responsiveness, and API integration with the back-end is a relatively unexplored aspect of academic literature, which is a contribution gap that can be filled by this individual work.
+Overall Aim
+The general purpose of this personal project is to design, develop, and assess an extensive, user-friendly Event Management and Booking Module as the main operational interface of the StarEvents Management web application. This will consist of a complete frontend, event creation, client booking, scheduling and notifications built on React.js that will connect with the Django REST Framework backend of the group. It is set to prove that it is possible to design, implement, and even test a professional-grade event management interface in a 15-week development cycle, which can serve as a model of successful digital transformation in the events sector of SMEs.
+
+
+
+
+
+
+
+Objectives										 (10 Marks)
+(List of tasks to be undertaken to achieve overall aim of the project* and to answer the research question posed)
+This individual contribution is subject to the following specific, measurable and sequenced objectives:
+•	A focused literature review of web-based event management systems, React.js frontend development patterns and user-centred design principles of SME digital transformation application (Weeks 1–3).
+Define the functional and non-functional requirements of the Event management and booking module by performing stakeholder role analysis (Admin, Staff, Client) and user story mapping resulting in a requirements specification document (Weeks 2 -4).
+•	Create high-fidelity wireframes and UI mockups of all event management screens, such as event dashboard, event creation form, booking form, calendar view, and the admin panel, in Figma, and make sure they comply with WCAG 2.1 (Weeks 3-5).
+•	Create a reusable event management module of React.js library of event cards, booking forms, calendar components, and notification banners, and implement component-based architecture best-practices (Weeks 4-7).
+•	Install the CRUD (Create, Read, Update, Delete) functionality with React.js frontend components that integrate with the Django REST Framework API endpoints to store and modify event data, such as image uploads and category filters (Weeks 5–9).
+•	Apply the client booking process, such as booking form validation, seat/slot capacity checking, booking confirmation, and waitlist management, to React state management (Context API or Redux) and Axios to communicate with APIs (Weeks 7-10).
+•	Install a semi-automatic email confirmation booking system, event alarms and event cancellation notification system using Django email backend (SMTP) based on booking state changes (Weeks 9-12).
+•	Functional testing of all event management and booking features, including unit tests of React components (Jest and React Testing Library), API integration tests, and cross-browser compatibility tests (Weeks 11-13).
+•	User Acceptance Testing (UAT): Conduct with no less than five proxy users, compare the module to usability heuristics and accessibility standards and booking workflow efficiency measurements and record results (Weeks 12-14).
+•	Create final documentation of the Event Management Module, combine the finished frontend with the single system of the group, and complete individual sections of specification (Week 15).
+
+Review of Literature 									(20 Marks)
+(An account of the current thinking/published information in the specific area of project*) 
+Digitalization of SME Service-based sectors.
+Since 2018, the literature of digital transformation among SMEs has expanded significantly, and the service sector businesses have been given more consideration, encompassing hospitality, tourism, and events. A conceptual framework of digital transformation offered by Savic (2020) includes a step of operational digitisation as a replacement of manual processes by digital workflows that is defined as the initial step, followed by more dramatic operational transformations, such as AI-driven personalisation or predictive analytics. In the case of small event management companies, this is the most effective transformation point because it is directly related to the administrative inefficiencies of the company (manual booking management, paper-based scheduling, email-only communication) that limit the productivity of the SME.
+Getz and Page (2016) have carried out a full analysis on the events industry, recording that small independent event management firms handle 50-200 events a year but utilize more than 40 percent of their human resources on administrative coordination instead of in customer-facing efforts. The most urgently needed digital investment that is identified by the authors as the small businesses, which organize events, is digital booking and scheduling systems, and the authors provide a promising outcome of this new technological tool: the administrative time could be reduced by a third to a half due to a computerised booking process and a digital event planner. This observation is what makes the current contribution directly interested in an overall Event Management and Booking Module.
+ React and Component-Based Web Architecture.
+React.js is a popular frontend JavaScript framework created and supported by Meta (formerly Facebook) that has become the most popular way of creating dynamically data-driven and driven web applications. The declarative programming model and virtual DOM reconciliation presented by React are effectively tailored to the applications that require their data states to continuously update, and Banks and Porcello (2017) argue that this feature indeed makes this detail an ideal match to a real-time event booking system, where the seat availability, booking counts, and event statuses are more than mere variables they need to be.
+The scholarly sources concerning the use of React.js to develop enterprises web applications outline a number of benefits applicable in the current project. Boduch and Derber (2021) explain that the reusability of components in React minimizes the time spent on development of multi-page applications since the elements of the UI, i.e., event cards, booking forms, and components of the navigation can be created once and used in many different views. Moreover, the React ecosystem - like React Router (routing), Axios (HTTP requests) and React Hook Form (form management) - offers an established, well-documented framework of building more complex booking workflows without necessarily re-creating standard functionality.
+ Web Application User-Centred Design and Accessibility.
+User-centred design (UCD) refers to a design philosophy that puts the end-user requirements, behaviour, and constraints on the centre of the design process (Norman, 2013). With respect to web-based business applications, the concept of UCD is especially significant with respect to the deployment of SME applications where user (staff and clients) technical literacy may be limited, and bad usability is literally translated to business inefficiency. Nielsen ten usability heuristics (Nielsen, 1994) is a universally accepted evaluation system which includes such dimensions as visibility of system status, error prevention, and consistency of interface design, all of which can be directly applied to the event booking workflow.
+The Web Content Accessibility Guidelines (WCAG 2.1), which were published by the World Wide Web Consortium (W3C, 2018), requires accessibility in the web applications. These guidelines define three levels of conformance (A, AA, and AAA) on four principles, namely Perceivable, Operable, Understandable and Robust, and are legally required in most jurisdictions, such as the United Kingdom under the Equality Act 2010, of public-facing web services. In the case of the StarEvents Management platform, the compliance with the WCAG 2.1 Level AA requirements is not only a legal requirement, but a business differentiator since the accessible design enhances the usability of the content not only to the disabled people but also to all users (Henry, Abou-Zahra and Brewer, 2014).
+ Workflow Automation and Booking Systems.
+According to the literature on online booking systems, there are a number of important functional requirements that define the effectiveness of the system to service businesses. Sigala (2013) examines the role of online booking system in the context of small tourism and events businesses and concludes that those systems, which have built-in capacity management, automated confirmation mails, and waitlist systems, score much higher in the client satisfaction scale and repeat booking rates than the ones that lack these features. As one of the factors that define booking completion rates, the author specifically mentions the significance of the real-time availability feedback, i.e. letting the clients know instantly whether they can get the date and time slot of their preferred event.
+More recently, Buhalis and Sinarta (2019) discuss the use of real-time information and immediate confirmation in the context of digital service booking, suggesting that consumer platforms (airline booking, hotel reservations) influenced the expectations of their clients and induced the desire to receive immediate and automated confirmation and not manual pre-approval processes. In small event businesses moving away to use telephone-based bookings, the use of automated confirmation email and real-time capacity displays thus constitutes a serious user experience issue that the said individual contribution directly resolves with the notification service integration.
+Synthesis and Research Gap
+The literature review as a whole confirms: (i) operational digitisation has a powerful positive impact on the efficiency of SME event management business; (ii) the React.js framework offers technical maturity and academically validated to develop scalable event management interfaces; (iii) user-centric design and accessibility conformity are unnegotiable conditions of client-facing SME web applications; (iv) automated booking processes and real-time capacity management are key success factors in the satisfaction of users and the efficiency of a business. The gap to be filled in this contribution is that there is no documented, artefact-based implementation of a full event management and booking module under the confines of the particular requirements of an SME digital transformation project, with budget, time, and capacity of technical team being extremely constrained. The given work offers such an implementation, which will offer a replicable model of SME event management digitisation.
+.
+Methodology										(25 Marks)
+(Explanation and justification of approach and methodology proposed for the project*. This section should explain the nature of the data and method of data collection. Identification and brief discussion of any analytical tools to be used; Identification of any ethical and practical issues.)
+The general methodological approach is as follows.
+It follows an Agile iterative development approach, namely, the Scrum framework when applied to the situation of a single developer (one-person Scrum). Agile techniques have been in the literature of software engineering as suitable to projects whose requirements are changing, with strict time constraints, and requiring constant stakeholder feedback (Schwaber and Sutherland, 2020). The iterative sprint format, used in the current situation, would enable the gradual growth of the Event Management Module - starting with basic event CRUD operations and building on it in the iterative fashion, adding booking operations, calendar integration, and notification services to the scope of the successful software output of each sprint.
+The given approach fulfills the MSc project requirement of primary research which requires a practical computing/IT work since the outcome of the primary research is a functional artefact (the Event Management and Booking Module), which is tested and evaluated by functional tests, usability testing, and performance measurement. Agile as an iterative process, makes it possible to implement the literature findings on user-centred design in stages, where the evaluation of usability is used to make design amends each time the sprint review is conducted.
+Module Scope and System Architecture.
+The Event Management Module functions as a collection of React.js web components (frontend) that uses RESTful HTTP requests to a collection of Django REST Framework API endpoints (backend) to interact with each other and use Axios to manage requests and JWT tokens (managed by the authentication module of Student 1) to regulate access. The system architecture is as shown in Fig 1 (below). The elements of this individual contribution include those highlighted in Presentation Layer (Event Dashboard, Booking Form UI, Event Catalogue) and Application Layer (Event CRUD API, Booking API, Notification Service), and PostgreSQL is the persistent data store.
+
+ 
+Fig 1: System Architecture Diagram components and Layer Structures in the Event Management Module.
+ Process Design of Event Booking.
+The workflow of the event booking is the most important user interaction with this module, as it consists of the entire chain of interaction through event discovery and booking confirmation. Fig 2 (below) is the complete process flow which shows the points of decision based on event availability, form validation, capacity checking, payment processing and notification dispatch. The workflow excludes part reservation and in-house, and provides a waitlist option in the case of a fully-booked event, an administrative review process in case of special booking requests, and email confirmation process in case of successful booking.
+
+ 
+Fig 2: Event Booking Process Figure - End-to-End Booking Process at StarEvents management.
+5.4 Development Tools and technologies.
+The implementation of the Event Management Module will be conducted in the following tools and frameworks:
+•	React.js (v18): Component framework to create the event dashboard and booking forms and the calendar views.
+•	React Router v6: Client routing between listing of events, event detail, booking, and administration.
+•	Axios: a HTTP client to the Django REST Framework API endpoints.
+•	React Hook Form: Booking and event creation form state management and validation.
+•	FullCalendar (React): Event scheduling and availability visualisation calendar component library.
+•	Tailwind CSS: utility-based CSS Framework of responsive and accessible UI styling.
+•	Django REST Framework: Backend API that has RESTful endpoints of event and booking information.
+•	Django Email Backend (SMTP): Automated sending of emails to confirm the booking and remind them of their booking.
+•	Jest and React Testing Library: React component Unit and integration testing.
+Figma: high-fidelity and UI/UX wireframing and mockup design.
+ Data Collection and Character of the Primary Research.
+Primary research is in the form of software artefact development and systematic evaluation. Functional testing will involve quantitative data such as: booking success rates at simulated load, count of form validation errors, email delivery delay and API response time. The user experience data will be obtained by conducting structured UAT sessions with five proxy users (fellow students), comparing the booking workflow with the usability heuristics of Nielsen, and the time taken to complete the relevant tasks, the error rate, and subjective satisfaction level of such users by the use of a post-session questionnaire. The compliance with the accessibility will be evaluated with the help of the axe DevTools automated accessibility audit tool that measures the compliance with the WCAG 2.1 Level AA.
+ Ethical and Practical Issues.
+The human participants (proxy users) will be part of the UAT sessions and will have to be approved of the ethics before testing through the UWS Ethics Review Manager. Participants will fill in informed written consent, and no actual client information will be utilized at any point of development or testing. The data in booking forms to be used in testing will be completely synthetic. The data protection considerations are: booking records which are stored in PostgreSQL with role-based access control (Admin/Staff/Client), and no unnecessary data about clients are necessary to be collected, and the email addresses of clients are used only to confirm the booking. The system will adopt HTTPS in all data transfer as well as the inbuilt CSRF protection of Django in all form submissions. The compliance to WCAG 2.1 Level AA will be taken during the development process, to provide accessibility to users with visual, motor and cognitive disabilities.
+
+
+
+
+Work Plan 										(10 Marks)
+(A timetable for completion of the project*. MSc Masters Project full-time is allowed 15 weeks and part-time is 30 weeks. You may use any appropriate method to present the well-thought-through plan of action reflecting your project* activities)
+The Gantt chart below (Fig 3) presents the 15-week project schedule for this individual contribution, organised across four development phases: Design, Implementation, Testing, and Documentation 
+
+Fig 3: Project Gantt Chart — 15-Week Timeline for Event Management Module Development
+
+WeekKey ActivitiesDeliverableEffort (hrs)Notes / Risk1–3Literature review: event systems, React.js, UCD, accessibility standardsAnnotated bibliography; lit review draft40/wkFocus on peer-reviewed sources only2–4Requirements analysis; user story mapping; stakeholder role definitionRequirements spec; user stories document40/wkCoordinate roles with group3–5UI/UX wireframing in Figma; accessibility audit of designsFigma wireframes; WCAG 2.1 compliance check40/wkRisk: design revision rounds4–7React component library: event cards, forms, nav, calendar componentsReusable component library; Storybook docs40/wkRisk: FullCalendar integration complexity5–9Event CRUD implementation: React frontend + Django API endpointsWorking event create/read/update/delete40/wkCoordinate API contracts with group backend7–10Booking flow: form validation, capacity check, waitlist, booking confirmationComplete booking workflow; API tests40/wkRisk: concurrent booking race conditions9–12Email notification service: Django SMTP, confirmation & reminder templatesWorking email notifications; test receipts40/wkSMTP config / spam filter risk11–13Functional testing: Jest unit tests, API integration tests, cross-browser checksTest report; coverage >80% target40/wkAllocate time for bug fixes12–14UAT with 5 proxy users; usability heuristics evaluation; accessibility auditUAT report; axe audit results35/wkEthics approval must be confirmed13–15Documentation; final report sections; group system integration; supervisor reviewCompleted specification; integrated module30/wkBuffer for last-minute integration issues
+
+
+References
+(Correctly presented in Cite Them Right Harvard style)					(10 Marks)
+· Banks, A. and Porcello, E. (2017) Learning React: Functional web development with React and Redux. Sebastopol: O'Reilly Media. https://www.oreilly.com/library/view/learning-react/9781491954614/
+· Buhalis, D. and Sinarta, Y. (2019) 'Real-time co-creation and nowness service: Lessons from tourism and hospitality', Journal of Travel and Tourism Marketing, 36(5), pp. 563–582. https://www.tandfonline.com/doi/full/10.1080/10548408.2019.1592059
+· Getz, D. and Page, S.J. (2016) Event studies: Theory, research and policy for planned events. 3rd edn. Abingdon: Routledge. https://www.routledge.com/Event-Studies-Theory-Research-and-Policy-for-Planned-Events/Getz-Page/p/book/9781138896871
+· Henry, S.L., Abou-Zahra, S. and Brewer, J. (2014) 'The role of accessibility in a universal web', in Proceedings of the 11th Web for All Conference. New York: ACM, pp. 1–4. https://doi.org/10.1145/2596695.2596719
+· Kahveci, E. (2025) 'Digital transformation strategies and challenges in small and medium enterprises (SMEs): A systematic review and future directions', Journal of Innovation and Entrepreneurship, 13, Article 84. https://link.springer.com/article/10.1186/s13731-025-00576-8
+· Nielsen, J. (1994) 'Enhancing the explanatory power of usability heuristics', in Proceedings of the SIGCHI Conference on Human Factors in Computing Systems. New York: ACM, pp. 152–158. https://doi.org/10.1145/191666.191729
+· Norman, D.A. (2013) The design of everyday things. Revised and expanded edn. New York: Basic Books. https://www.hachettebookgroup.com/titles/don-norman/the-design-of-everyday-things-revised-and-expanded-edition/9780465050659/?lens=basic-books
+· OECD (2021) The digital transformation of SMEs. OECD Studies on SMEs and Entrepreneurship. Paris: OECD Publishing. https://doi.org/10.1787/bdb9256a-en
+· Piccoli, G. and Pigni, F. (2018) 'Harvesting external information for digital innovation: The moderating role of IT asset portfolios', Journal of the Association for Information Systems, 19(4), pp. 265–295. https://doi.org/10.17705/1jais.00494
+· Savić, D. (2020) 'From digitization, through digitalization, to digital transformation', Online Searcher, 44(1), pp. 36–39. https://www.infotoday.com/OnlineSearcher/Articles/Features/From-Digitization-Through-Digitalization-to-Digital-Transformation-129664.shtml
+· Schwaber, K. and Sutherland, J. (2020) The Scrum guide: The definitive guide to Scrum — the rules of the game. Available at: https://scrumguides.org/scrum-guide.html (Accessed: 10 February 2026).
+· Sigala, M. (2013) 'Examining the adoption of e-CRM in Greek hotels', Journal of Travel and Tourism Marketing, 30(7), pp. 641–661. https://doi.org/10.1080/10548408.2013.827156
+· W3C (World Wide Web Consortium) (2018) Web content accessibility guidelines (WCAG) 2.1. Available at: https://www.w3.org/TR/WCAG21/ (Accessed: 10 February 2026).
+
+
+
+
+
+
+
+*Individual contribution for group project
+
+Marking scheme
+(Marking scheme for final report/dissertation. Note: For group project, each student in a team must submit their own sections for- Presentation of results, Conclusions and Critical Self-Evaluation)
+
+Introduction5Literature Review15Research Design15Implementation25Testing10Presentation of Results10Conclusions10Critical Self-Evaluation10Total100
+Supervisor
+Ahren Hart
+Moderator
+Haider Ali
+Programme Leader
+Md Masum Rana
+Date specification submitted
+Feb 2026
+Please complete the ‘ethics’ & pathway confirmation form below for all projects.
+School of Computing, Engineering and Physical Sciences
+
+MSc Masters PROJECT – REQUIREMENT FOR ETHICAL APPROVAL & PATHWAY CONFIRMATION
+
+SECTION 1: TO BE COMPLETED BY THE STUDENT(S)
+Does your proposed research involve: research with human subjects (including requirements gathering and product/software testing), access to company documents/records, questionnaires, surveys, focus groups and/or other interview techniques? Does your research entail any process which requires ethical approval? (please enter √ in the appropriate box)
+
+YESYou must submit an application for approval to the Ethics Review ManagerNOYou do not need to submit an application to the Ethics Review Manager
+
+√
+I confirm that the above project specification aligns with my MSc programme specialist pathway. (please enter √ in the box)
+Name of student (print name): Mohsin khan
+
+Signature: Mohsin Khan
+
+
+
+
+SECTION 2: TO BE COMPLETED BY THE PROJECT SUPERVISOR
+I understand that the above project requires/does not require* ethical approval (*please delete as appropriate).
+
+I confirm that the above project aligns with the MSc programme specialist pathway the
+ Student(s) is (are) enrolled in. (please enter √ in the box)
+
+Supervisor (print name):  
+
+Signature: 
+
+Date:
+
+IMPORTANT: please note that by signing this form all signatories are confirming that any potential ethical issues have been considered and, where necessary, an application for ethical approval has been/will be made via the Ethical Review Manager software.  
+Any project requiring ethical approval but which has not been given approval will not be accepted for marking. 
+Ethical approval cannot be sought in retrospect.
+
+
+2
+
