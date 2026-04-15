@@ -27,6 +27,12 @@ const Signup = () => {
   const resolveBiometricError = (errorPayload) => {
     if (!errorPayload) return 'Face capture failed. Please try again.'
 
+    if (typeof errorPayload === 'string') return errorPayload
+
+    if (Array.isArray(errorPayload) && errorPayload.length > 0) {
+      return String(errorPayload[0])
+    }
+
     const code = errorPayload.error_code
     if (!code) return errorPayload.error || 'Face capture failed. Please try again.'
 
@@ -43,6 +49,31 @@ const Signup = () => {
     }
 
     return map[code] || errorPayload.error || 'Face capture failed. Please try again.'
+  }
+
+  const resolveRegistrationError = (errorPayload) => {
+    if (!errorPayload) return 'Registration failed. Please try again.'
+
+    const biometricMessage = resolveBiometricError(errorPayload)
+    if (biometricMessage && biometricMessage !== 'Face capture failed. Please try again.') {
+      return biometricMessage
+    }
+
+    const entries = Object.entries(errorPayload)
+      .filter(([key]) => key !== 'error' && key !== 'error_code')
+
+    if (entries.length > 0) {
+      const [field, value] = entries[0]
+      const fieldLabel = field.replace(/_/g, ' ')
+      if (Array.isArray(value) && value.length > 0) {
+        return `${fieldLabel}: ${value[0]}`
+      }
+      if (typeof value === 'string') {
+        return `${fieldLabel}: ${value}`
+      }
+    }
+
+    return errorPayload.error || 'Registration failed. Please check your details and try again.'
   }
 
   const captureImage = () => {
@@ -87,7 +118,7 @@ const Signup = () => {
       showToast('Account created and face profile saved. Please sign in.', 'success')
       navigate('/login')
     } catch (error) {
-      const message = resolveBiometricError(error.response?.data)
+      const message = resolveRegistrationError(error.response?.data)
       showToast(message, 'error')
     } finally {
       setLoading(false)

@@ -42,12 +42,7 @@ db.sqlite3-journal
 /static_collected
 
 # Environment Variables
-.env
-.env.local
 .env.*.local
-.env.development
-.env.production
-.env.test
 
 # IDE
 .vscode/
@@ -152,3 +147,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+config.bat
