@@ -178,6 +178,9 @@ TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
 # Face Recognition Settings
 FACE_RECOGNITION_TOLERANCE = config('FACE_RECOGNITION_TOLERANCE', default=0.6, cast=float)
 FACE_RECOGNITION_MODEL = config('FACE_RECOGNITION_MODEL', default='hog')
+FACE_MIN_SHARPNESS_SCORE = config('FACE_MIN_SHARPNESS_SCORE', default=45.0, cast=float)
+FACE_LOW_RES_MIN_SHARPNESS_SCORE = config('FACE_LOW_RES_MIN_SHARPNESS_SCORE', default=25.0, cast=float)
+FACE_LOW_RES_WIDTH_THRESHOLD = config('FACE_LOW_RES_WIDTH_THRESHOLD', default=220, cast=int)
 
 # GDPR Data Retention (in days)
 AUDIT_LOG_RETENTION_DAYS = config('AUDIT_LOG_RETENTION_DAYS', default=365, cast=int)
