@@ -41,7 +41,9 @@ IMAGE_PREFIX_V2 = b'IMGV2'
 BIOMETRIC_CHALLENGE_TOKEN_EXPIRATION_SECONDS = 900
 MIN_FACE_AREA_RATIO = 0.08
 MAX_FACE_CENTER_OFFSET = 0.45
-MIN_FACE_SHARPNESS_SCORE = 120.0
+MIN_FACE_SHARPNESS_SCORE = float(getattr(settings, 'FACE_MIN_SHARPNESS_SCORE', 45.0))
+LOW_RES_FACE_MIN_SHARPNESS_SCORE = float(getattr(settings, 'FACE_LOW_RES_MIN_SHARPNESS_SCORE', 25.0))
+LOW_RES_FACE_WIDTH_THRESHOLD = int(getattr(settings, 'FACE_LOW_RES_WIDTH_THRESHOLD', 220))
 MIN_FACE_BRIGHTNESS = 45.0
 MAX_FACE_BRIGHTNESS = 215.0
 FALLBACK_FACE_SIGNATURE_MAX_DISTANCE = 42
@@ -312,12 +314,28 @@ def _validate_single_face_quality(image_array):
     grad_x = np.diff(gray_face, axis=1)
     grad_y = np.diff(gray_face, axis=0)
     sharpness_score = float(np.var(grad_x) + np.var(grad_y))
-    if sharpness_score < MIN_FACE_SHARPNESS_SCORE:
-        return {
-            'ok': False,
-            'code': 'image_too_blurry',
-            'message': 'Image is blurry. Hold still and capture a sharper photo.'
-        }
+    # Laptop webcams often produce softer frames; use a lower blur threshold for small face crops.
+    blur_threshold = (
+        LOW_RES_FACE_MIN_SHARPNESS_SCORE
+        if max(face_width, face_height) < LOW_RES_FACE_WIDTH_THRESHOLD
+        else MIN_FACE_SHARPNESS_SCORE
+    )
+    if sharpness_score < blur_threshold:
+        if FACE_RECOGNITION_AVAILABLE:
+            # If we can still extract a stable face encoding, accept low-sharpness laptop webcam frames.
+            relaxed_encoding = _extract_face_encoding_for_location(image_array, face_locations[0])
+            if relaxed_encoding is None:
+                return {
+                    'ok': False,
+                    'code': 'image_too_blurry',
+                    'message': 'Image is blurry. Hold still and capture a sharper photo.'
+                }
+        else:
+            return {
+                'ok': False,
+                'code': 'image_too_blurry',
+                'message': 'Image is blurry. Hold still and capture a sharper photo.'
+            }
 
     return {
         'ok': True,
@@ -328,6 +346,8 @@ def _validate_single_face_quality(image_array):
             'face_area_ratio': round(face_area_ratio, 4),
             'brightness': round(brightness, 2),
             'sharpness_score': round(sharpness_score, 2),
+            'blur_threshold': round(blur_threshold, 2),
+            'low_sharpness_accepted': sharpness_score < blur_threshold,
         }
     }
 
@@ -335,12 +355,55 @@ def _validate_single_face_quality(image_array):
 def _extract_face_encoding_for_location(image_array, face_location):
     if not FACE_RECOGNITION_AVAILABLE:
         return None
-    try:
-        encodings = face_recognition.face_encodings(image_array, known_face_locations=[face_location])
-        if encodings:
-            return encodings[0]
-    except Exception:
+
+    def _try_extract(target_array, location_hint=None):
+        try:
+            if location_hint is not None:
+                encodings = face_recognition.face_encodings(target_array, known_face_locations=[location_hint])
+                if encodings:
+                    return encodings[0]
+            encodings = face_recognition.face_encodings(target_array)
+            if encodings:
+                return encodings[0]
+        except Exception:
+            return None
         return None
+
+    # Attempt 1: raw frame with detected location.
+    encoding = _try_extract(image_array, face_location)
+    if encoding is not None:
+        return encoding
+
+    # Attempt 2: autocontrast + mild sharpen helps soft laptop webcams.
+    enhanced = Image.fromarray(image_array)
+    enhanced = ImageOps.autocontrast(enhanced)
+    enhanced = enhanced.filter(ImageFilter.UnsharpMask(radius=1.4, percent=150, threshold=2))
+    enhanced_array = np.asarray(enhanced, dtype=np.uint8)
+    encoding = _try_extract(enhanced_array, face_location)
+    if encoding is not None:
+        return encoding
+
+    # Attempt 3: upscale before extraction for low-resolution captures.
+    try:
+        scale = 1.35
+        upscaled_image = enhanced.resize(
+            (int(enhanced.width * scale), int(enhanced.height * scale)),
+            Image.Resampling.LANCZOS,
+        )
+        upscaled_array = np.asarray(upscaled_image, dtype=np.uint8)
+        top, right, bottom, left = face_location
+        scaled_location = (
+            int(top * scale),
+            int(right * scale),
+            int(bottom * scale),
+            int(left * scale),
+        )
+        encoding = _try_extract(upscaled_array, scaled_location)
+        if encoding is not None:
+            return encoding
+    except Exception:
+        pass
+
     return None
 
 
