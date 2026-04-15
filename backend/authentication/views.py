@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import login
 from django.utils import timezone
 from django.conf import settings
+from django.db import transaction
 from datetime import datetime, timedelta
 import numpy as np
 import jwt
@@ -356,15 +357,55 @@ class AuthViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'])
     def register(self, request):
-        """User Registration"""
+        """User Registration with required biometric enrollment."""
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
-            log_audit_event(user, 'account_created', request)
-            return Response({
-                'message': 'User registered successfully',
-                'user': UserSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
+            image_data = request.data.get('image_data')
+            if not image_data:
+                return Response(
+                    {
+                        'error': 'Face capture is required to create your account.',
+                        'error_code': 'biometric_required'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                _, image_array = _image_data_to_rgb_array(image_data)
+                quality_check = _validate_single_face_quality(image_array)
+                if not quality_check['ok']:
+                    return Response(
+                        {
+                            'error': quality_check['message'],
+                            'error_code': quality_check['code']
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                face_location = quality_check['face_location']
+                face_encoding = _extract_face_encoding_for_location(image_array, face_location)
+
+                with transaction.atomic():
+                    user = serializer.save()
+                    if face_encoding is not None:
+                        user.biometric_embedding = EMBEDDING_PREFIX + np.asarray(face_encoding, dtype=np.float64).tobytes()
+                    else:
+                        face_crop = _face_crop_from_location(image_array, face_location)
+                        fallback_signature = _compute_face_signature(face_crop)
+                        user.biometric_embedding = IMAGE_PREFIX_V2 + fallback_signature
+
+                    user.biometric_enrolled = True
+                    user.save(update_fields=['biometric_embedding', 'biometric_enrolled', 'updated_at'])
+
+                log_audit_event(user, 'account_created', request, {'biometric_enrolled': True})
+                return Response({
+                    'message': 'User registered successfully. Face profile saved.',
+                    'user': UserSerializer(user).data
+                }, status=status.HTTP_201_CREATED)
+            except ValueError as error:
+                return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as error:
+                return Response({'error': f'Registration failed: {str(error)}'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'])

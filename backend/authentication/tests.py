@@ -31,6 +31,68 @@ class AuthenticationFlowTests(TestCase):
             role='admin',
         )
 
+    def test_register_requires_face_capture(self):
+        response = self.client.post(
+            '/api/auth/register/',
+            {
+                'username': 'newuser',
+                'email': 'new@test.com',
+                'password': 'StrongPass@123',
+                'password_confirm': 'StrongPass@123',
+                'first_name': 'New',
+                'last_name': 'User',
+                'role': 'client',
+                'phone_number': '+1111111111',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['error_code'], 'biometric_required')
+        self.assertFalse(User.objects.filter(username='newuser').exists())
+
+    @patch('authentication.views._extract_face_encoding_for_location')
+    @patch('authentication.views._validate_single_face_quality')
+    @patch('authentication.views._image_data_to_rgb_array')
+    def test_register_saves_biometric_profile(
+        self,
+        mock_image_data_to_rgb_array,
+        mock_validate_single_face_quality,
+        mock_extract_face_encoding,
+    ):
+        mock_image_data_to_rgb_array.return_value = (
+            b'fake-image-bytes',
+            np.zeros((128, 128, 3), dtype=np.uint8),
+        )
+        mock_validate_single_face_quality.return_value = {
+            'ok': True,
+            'code': 'ok',
+            'message': 'Face quality check passed.',
+            'face_location': (10, 90, 90, 10),
+        }
+        mock_extract_face_encoding.return_value = np.ones(128, dtype=np.float64)
+
+        response = self.client.post(
+            '/api/auth/register/',
+            {
+                'username': 'signupface',
+                'email': 'signupface@test.com',
+                'password': 'StrongPass@123',
+                'password_confirm': 'StrongPass@123',
+                'first_name': 'Sign',
+                'last_name': 'Up',
+                'role': 'client',
+                'phone_number': '+2222222222',
+                'image_data': 'dGVzdC1pbWFnZQ==',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        created_user = User.objects.get(username='signupface')
+        self.assertTrue(created_user.biometric_enrolled)
+        self.assertTrue(bytes(created_user.biometric_embedding).startswith(EMBEDDING_PREFIX))
+
     def test_login_phase1_requires_otp(self):
         response = self.client.post(
             '/api/auth/login_phase1/',
