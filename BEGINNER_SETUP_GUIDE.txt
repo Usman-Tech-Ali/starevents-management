@@ -1,75 +1,59 @@
-STAREVENTS MANAGEMENT SYSTEM - BEGINNER SETUP GUIDE
+STAREVENTS MANAGEMENT SYSTEM - BEGINNER GUIDE (NEW PC SETUP)
 
-This guide shows how to clone the project, install everything needed, run the app, and get the OTP.
+Goal: run this project on any other Windows PC when full code is already provided.
 
-1) WHAT YOU NEED ON YOUR PC
+=================================================================
+1) SOFTWARE TO INSTALL FIRST (ONE TIME)
+=================================================================
 
-- GitHub Desktop
+Install these tools:
+- Git (or GitHub Desktop)
 - VS Code
 - Python 3.11 or newer
-- Node.js 18 or newer
-- npm (installed with Node.js)
-- Windows PowerShell
-- Internet connection for package installation
+- Node.js 18 or newer (npm comes with it)
 
-Optional for production or Docker setup:
-- Docker Desktop
-- PostgreSQL
+Recommended checks in PowerShell:
+- python --version
+- node --version
+- npm --version
 
-2) CLONE THE PROJECT USING GITHUB DESKTOP
+If Python command is not found, re-open terminal after Python installation.
 
-Method 1: If you already have the GitHub repository URL
+=================================================================
+2) OPEN THE PROJECT FOLDER
+=================================================================
 
-- Open GitHub Desktop
-- Click File > Clone repository
-- Choose URL
-- Paste the repository URL
-- Choose a local folder on your PC
-- Click Clone
+If code is already copied to PC:
+- Open VS Code
+- File > Open Folder
+- Select the project folder (the folder that contains backend and frontend)
 
-Method 2: If the repository is already in your GitHub account
+If code is in GitHub:
+- Clone the repository
+- Then open cloned folder in VS Code
 
-- Open GitHub Desktop
-- Click File > Clone repository
-- Choose GitHub.com
-- Select the repository
-- Choose a local folder
-- Click Clone
+=================================================================
+3) BACKEND SETUP (TERMINAL 1)
+=================================================================
 
-After cloning, open the project folder in VS Code.
+Open PowerShell in project root and run:
 
-3) PROJECT FOLDERS
-
-- Backend: backend
-- Frontend: frontend
-
-4) BACKEND SETUP
-
-Open PowerShell and go to the backend folder:
-
-cd C:\Users\AL-MAKKAH\Desktop\face\starevents-management-main\backend
-
-Create a virtual environment if it does not already exist:
-
+cd backend
 python -m venv .venv
-
-Activate the virtual environment:
-
 .\.venv\Scripts\Activate.ps1
-
-Install Python dependencies:
-
 pip install -r requirements.txt
 
-If you get a NumPy or OpenCV error, run:
+Important note for face-recognition dependencies:
+- If installation fails at dlib/face-recognition, install Microsoft C++ Build Tools and retry pip install.
 
-pip install 'numpy<2'
+If NumPy/OpenCV compatibility issue appears, run:
+pip install "numpy<2"
 
-5) BACKEND ENVIRONMENT FILE
+-----------------------------------------------------------------
+Create backend .env file (backend\.env)
+-----------------------------------------------------------------
 
-The backend needs a .env file in the backend folder.
-
-For local development, use SQLite. Put this in backend\.env:
+Use this local configuration:
 
 DEBUG=True
 SECRET_KEY=django-insecure-dev-key-change-in-production
@@ -78,119 +62,108 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 DATABASE_URL=sqlite:///db.sqlite3
 DB_NAME=db.sqlite3
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
-CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:8000
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000
 
-This local SQLite database is saved in backend\db.sqlite3.
-
-6) RUN BACKEND MIGRATIONS
-
-Still inside the backend folder and with the virtual environment active, run:
+Run migrations and start backend:
 
 python manage.py migrate
-
-7) START THE BACKEND SERVER
-
-Run this command:
-
 python manage.py runserver 0.0.0.0:8000
 
-The backend will run at:
-
+Backend URL:
 http://127.0.0.1:8000
 
-8) FRONTEND SETUP
+Keep this terminal running.
 
-Open a second PowerShell window and go to the frontend folder:
+=================================================================
+4) FRONTEND SETUP (TERMINAL 2)
+=================================================================
 
-cd C:\Users\AL-MAKKAH\Desktop\face\starevents-management-main\frontend
+Open a second PowerShell in project root and run:
 
-Install frontend dependencies:
-
+cd frontend
 npm install
+npm run dev -- --host 0.0.0.0 --port 3000
 
-9) START THE FRONTEND SERVER
-
-Run this command:
-
-npm run dev
-
-The frontend will run at:
-
+Frontend URL:
 http://localhost:3000
 
-10) HOW TO OPEN THE APP
+Keep this terminal running.
 
-- Open your browser
-- Go to http://localhost:3000/login
-- Enter your username and password
-- Continue with OTP
-- Then continue with face verification or face enrollment
+=================================================================
+5) HOW TO USE AUTHENTICATION FLOW
+=================================================================
 
-11) HOW TO GET THE OTP
+This project now uses this flow:
 
-There are 3 ways:
+A) First time user (Sign Up)
+1. Open: http://localhost:3000/signup
+2. Fill details (username, email, phone, password, etc.)
+3. Capture face image
+4. Click Create Account
+5. Account is created and face profile is saved in local database
 
-Option A: Console OTP in development
+B) Login after account creation
+1. Open: http://localhost:3000/login
+2. Enter username + password
+3. Receive OTP
+4. Enter OTP
+5. Capture face for verification
+6. If face matches stored profile, login succeeds
 
-- If EMAIL_BACKEND is set to django.core.mail.backends.console.EmailBackend
-- The OTP will appear in the backend terminal where python manage.py runserver is running
-- Look for a line like:
-  Your OTP code is: 123456
+=================================================================
+6) HOW TO GET OTP IN LOCAL DEVELOPMENT
+=================================================================
 
-Option B: SMS or real email
+Default setup uses console email backend.
 
-- If Twilio or real email is configured, the OTP is sent to the phone or email address saved for the user
+So OTP appears in backend terminal output (Terminal 1).
+Look for line like:
+Your OTP code is: 123456
 
-Option C: Read it from the database in PowerShell
+If not visible, request OTP again from login page.
 
-- Go to the backend folder
-- Activate the virtual environment
-- Run:
+=================================================================
+7) HOW TO STOP SERVERS
+=================================================================
 
-python manage.py shell -c "from authentication.models import OTPToken; from django.contrib.auth import get_user_model; User = get_user_model(); user = User.objects.get(username='testuser'); otp = OTPToken.objects.filter(user=user, is_used=False).order_by('-created_at').first(); print(otp.token if otp else 'NO_OTP')"
+In both terminals, press Ctrl + C.
 
-This prints the latest unused OTP for that user.
+=================================================================
+8) MOST COMMON ISSUES + FIXES
+=================================================================
 
-12) FIRST LOGIN FLOW
+Issue: Frontend opens but API fails
+Fix:
+- Ensure backend server is running on port 8000
+- Ensure frontend runs on port 3000
+- Check backend .env CORS values
 
-1. Enter username and password
-2. Request OTP
-3. Read OTP from the backend terminal or database
-4. Enter the OTP in the login page
-5. Capture the face
-6. On first login, the face is saved in the backend database for that user
-7. Login finishes and you go to the dashboard
+Issue: Camera not opening
+Fix:
+- Allow browser camera permission
+- Close other apps using camera
 
-13) SECOND LOGIN FLOW
+Issue: OTP not received
+Fix:
+- Check backend terminal output for OTP
+- Re-send OTP from UI
 
-1. Enter the same username and password
-2. Request a new OTP
-3. Read the new OTP
-4. Enter the OTP
-5. Capture the face again
-6. The backend compares the new face with the stored face for that same user
-7. If the face matches, login succeeds
+Issue: face package install error
+Fix:
+- Install Microsoft C++ Build Tools
+- Retry: pip install -r requirements.txt
 
-14) HOW TO STOP THE PROJECT
-
-- In the backend terminal, press CTRL + C
-- In the frontend terminal, press CTRL + C
-
-15) IF SOMETHING DOES NOT WORK
-
-- Check that backend and frontend are both running
-- Check that backend is using the SQLite .env settings for local use
-- Check that Python packages are installed inside .venv
-- Check that Node dependencies are installed inside frontend\node_modules
-- If OTP is missing, request a new OTP again
-
-16) SIMPLE RUN COMMANDS
+=================================================================
+9) QUICK COMMANDS (COPY/PASTE)
+=================================================================
 
 Backend:
 
 cd backend
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 
@@ -198,6 +171,6 @@ Frontend:
 
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0 --port 3000
 
-END OF GUIDE
+END

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import api from '../api/axios'
@@ -437,6 +437,12 @@ const Login = () => {
 
         <p className="mt-6 text-center text-sm text-gray-600">
           Secure 3-phase authentication system
+        </p>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          New user?{' '}
+          <Link to="/signup" className="font-semibold text-blue-700 hover:text-blue-900">
+            Create account
+          </Link>
         </p>
       </div>
     </div>
