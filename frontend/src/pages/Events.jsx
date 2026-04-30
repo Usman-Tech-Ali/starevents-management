@@ -8,18 +8,21 @@ import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 import Modal from '../components/ui/Modal'
 import Loading from '../components/ui/Loading'
-import { Plus, Search, Edit, Trash2, Eye, Calendar, MapPin, Users, DollarSign } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Eye, Calendar, MapPin, Users, DollarSign, Ticket, AlertCircle } from 'lucide-react'
 
 const Events = () => {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [bookingLoading, setBookingLoading] = useState(false)
   const { showToast } = useToast()
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
+  const { register: registerBooking, handleSubmit: handleBookingSubmit, reset: resetBooking, formState: { errors: bookingErrors } } = useForm()
 
   useEffect(() => {
     fetchEvents()
@@ -94,6 +97,41 @@ const Events = () => {
       fetchEvents()
     } catch (error) {
       showToast('Failed to publish event', 'error')
+    }
+  }
+
+  const handleBookEvent = (event) => {
+    setSelectedEvent(event)
+    resetBooking()
+    setIsBookingModalOpen(true)
+  }
+
+  const onBookingSubmit = async (data) => {
+    try {
+      setBookingLoading(true)
+      const bookingData = {
+        event: selectedEvent.id,
+        number_of_tickets: parseInt(data.number_of_tickets),
+        special_requests: data.special_requests || ''
+      }
+      
+      const response = await api.post('/events/bookings/', bookingData)
+      showToast('Booking created successfully!', 'success')
+      setIsBookingModalOpen(false)
+      resetBooking()
+      setSelectedEvent(null)
+      
+      // Show booking confirmation details
+      setTimeout(() => {
+        showToast(`Booking Reference: ${response.data.booking_reference}`, 'info')
+      }, 500)
+    } catch (error) {
+      const errorMsg = error.response?.data?.number_of_tickets?.[0] || 
+                       error.response?.data?.error || 
+                       'Failed to create booking'
+      showToast(errorMsg, 'error')
+    } finally {
+      setBookingLoading(false)
     }
   }
 
@@ -234,11 +272,23 @@ const Events = () => {
                   </div>
                 </div>
               </CardBody>
-              <div className="px-6 py-4 border-t border-gray-200 flex gap-2">
+              <div className="px-6 py-4 border-t border-gray-200 flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => handleEdit(event)}>
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
                 </Button>
+                {event.status === 'published' && !event.is_full && (
+                  <Button size="sm" variant="success" onClick={() => handleBookEvent(event)}>
+                    <Ticket className="w-4 h-4 mr-1" />
+                    Book Now
+                  </Button>
+                )}
+                {event.status === 'published' && event.is_full && (
+                  <Button size="sm" variant="secondary" disabled>
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    Fully Booked
+                  </Button>
+                )}
                 {event.status === 'draft' && (
                   <Button size="sm" variant="success" onClick={() => handlePublish(event.id)}>
                     Publish
@@ -350,6 +400,100 @@ const Events = () => {
             </Button>
             <Button type="submit">
               {selectedEvent ? 'Update Event' : 'Create Event'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Booking Modal */}
+      <Modal
+        isOpen={isBookingModalOpen}
+        onClose={() => { setIsBookingModalOpen(false); resetBooking(); setSelectedEvent(null) }}
+        title={`Book ${selectedEvent?.title || 'Event'}`}
+        size="md"
+      >
+        <form onSubmit={handleBookingSubmit(onBookingSubmit)} className="space-y-4">
+          {selectedEvent && (
+            <Card>
+              <CardBody className="bg-blue-50">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm text-gray-600">Event Date</p>
+                      <p className="font-semibold text-gray-900">
+                        {new Date(selectedEvent.start_date).toLocaleDateString()} at {new Date(selectedEvent.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Price per Ticket</p>
+                      <p className="font-semibold text-gray-900">£{selectedEvent.price}</p>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-blue-200">
+                    <p className="text-sm text-gray-600">Available Tickets</p>
+                    <p className="font-semibold text-gray-900">{selectedEvent.available_capacity} / {selectedEvent.capacity}</p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Number of Tickets
+            </label>
+            <Input
+              type="number"
+              min="1"
+              max={selectedEvent?.available_capacity || 1}
+              {...registerBooking('number_of_tickets', {
+                required: 'Number of tickets is required',
+                min: { value: 1, message: 'Minimum 1 ticket required' },
+                max: { value: selectedEvent?.available_capacity || 1, message: `Maximum ${selectedEvent?.available_capacity} tickets available` }
+              })}
+              error={bookingErrors.number_of_tickets?.message}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Special Requests (Optional)
+            </label>
+            <textarea
+              {...registerBooking('special_requests')}
+              rows={3}
+              placeholder="Any special requirements or requests..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {selectedEvent && (
+            <Card>
+              <CardBody className="bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">Total Amount:</span>
+                  <span className="text-2xl font-bold text-blue-600">
+                    £{(selectedEvent.price * (parseInt(registerBooking('number_of_tickets').value) || 1)).toFixed(2)}
+                  </span>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => { setIsBookingModalOpen(false); resetBooking() }}
+              disabled={bookingLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              disabled={bookingLoading}
+            >
+              {bookingLoading ? 'Processing...' : 'Confirm Booking'}
             </Button>
           </div>
         </form>

@@ -6,6 +6,7 @@ import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Bookings from './pages/Bookings'
+import BookingDetails from './pages/BookingDetails'
 import Inventory from './pages/Inventory'
 import Reports from './pages/Reports'
 import PrivateRoute from './components/PrivateRoute'
@@ -24,6 +25,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="events" element={<Events />} />
               <Route path="bookings" element={<Bookings />} />
+              <Route path="bookings/:id" element={<BookingDetails />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="reports" element={<Reports />} />
             </Route>
